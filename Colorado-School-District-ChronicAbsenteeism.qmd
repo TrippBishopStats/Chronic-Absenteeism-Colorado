@@ -1,0 +1,18 @@
+---
+title: "Chronic Absenteeism in Colorado School Districts"
+subtitle: "School years 2016-2017 to  2022-2023"
+author: "Tripp Bishop"
+format: html
+---
+
+## Data Sources
+
+Absenteeism Data: [Colorado Department of Education](https://www.cde.state.co.us/cdereval/truancystatistics)
+
+School District Shape Files: [Colorado Geospatial Portal](https://geodata.colorado.gov/datasets/COOIT::school-districts/about)
+
+## Definitions
+
+* **Truancy**: Truancy is defined as an unexcused absence. The rate is calculated by dividing the reported Total Student Days Unexcused Absences by the Total Student Days Possible.
+* **Habitually Truant (Student Count)**: A student is counted as habitually truant if the student has 4 excused absences in one month and/or 10 unexcused absences in one school year.
+* **Chronically Absent**: A student absent 10 percent or more of the days enrolled during the school year is chronically absent. All absences are included - unexcused and excused. The rate is the percentage of students enrolled who are chronically absent.
