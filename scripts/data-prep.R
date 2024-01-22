@@ -1,7 +1,10 @@
 library(tidyverse)
 library(janitor)
 library(readxl)
+library(naniar)
 rm(list=ls())
+
+source("scripts/functions.R")
 
 # The first N rows of the spreadsheet are not useful. The actual headers start
 # on line N+1 and the data follows from there.
@@ -111,8 +114,140 @@ df_2022 <- df_2022 |>
                   "absentee_students" = "chronic_absent_count"))) |> 
   relocate(absentee_students, .before=total_students)
 
-# write CSV files to output folder
+
+# Now that we have normalised the dataframes, we need to eliminate unnecessary
+# rows and remove any duplicates.
+
+# A quick visual inspection of the 2016 data shows that there are 177 school
+# districts in the file. There are an additional 7 records in the table that are
+# non-geographical school districts. These will be eliminated from this
+# analysis. In addition, there is a "State Totals" row in the file that will
+# also be removed.
+
+invalid_county_codes <- c("90","98","STATE TOTALS")
+
+df_2016 <- df_2016 |> 
+  filter(!county_code %in% invalid_county_codes)
+
+# There are now 177 school districts in the dataframe.
+
+# Now we will look at the 2017-2018 school year data. This file has the same
+# invalid districts but it also has some extra rows that do not contain data.
+# They are just artifacts of the Excel spreadsheets that are the original source
+# of the data.
+
+df_2017 <- df_2017 |> 
+  filter(!county_code %in% invalid_county_codes & !is.na(county_code))
+
+# There are now 178 records in the dataset. It seems like there is a school
+# district missing from the 2016 data. We can do an anti-join to locate the
+# school district.
+
+df_2017 |> 
+  anti_join(df_2016, by="district_code")
+
+# This shows that the Karval district is missing from the 2016 data. We will add
+# the record to 2016 and put NA for the student data fields.
+
+# karval <- df_2017 |> 
+#   anti_join(df_2016, by="district_code") |> 
+#   mutate(
+#     absentee_students = NA,
+#     total_students = NA,
+#     chronically_absent_rate = NA
+#   )
+# 
+# df_2016 <- bind_rows(df_2016, karval) |> arrange(district_code)
+
+df_2016 <- extract_missing_district(df_2017, df_2016)
+
+
+# The missing school district has now been added to the dataframe.
+
+# Now, examine the 2018 school year dataset.
+df_2018 |> 
+  filter(!county_code %in% invalid_county_codes & !is.na(county_code)) |> 
+  count()
+
+# Like 2016, there are now only 177 school districts, we can use the same
+# technique to identify which district is missing.
+
+df_2018_tmp <- df_2018 |> 
+  filter(!county_code %in% invalid_county_codes & !is.na(county_code))
+
+df_2017 |> 
+  anti_join(df_2018_tmp, by="district_code")
+
+# The CHERAW 31 district is missing. Let's add it to the 2018 dataset.
+df_2018 <- extract_missing_district(df_2017, df_2018_tmp)
+rm(df_2018_tmp)
+
+# Now there are 178 districts in the dataset.
+
+# Moving on to 2019. There are new challenges here. The totals row is now in a
+# different format and the previous filtering methods won't work, so we'll use a
+# custom approach for this school year.
+df_2019 |> 
+  filter(!county_code %in% invalid_county_codes & county_code != "COLORADO TOTAL") |> 
+  count()
+
+# There are 178 school districts, so no more processing is required.
+df_2019 <- df_2019 |> 
+  filter(!county_code %in% invalid_county_codes & county_code != "COLORADO TOTAL")
+
+# Now let's look at 2020. The pattern here is similar to 2019, but the totals
+# column is now labeled "State Total", so we need to modify approach slightly.
+df_2020 |> 
+  filter(!county_code %in% invalid_county_codes & county_code != "State Total") |> 
+  count()
+
+df_2020_tmp <- df_2020 |> 
+  filter(!county_code %in% invalid_county_codes & county_code != "State Total")
+
+# Again, we are missing a school district. Which one is it?
+df_2017 |> 
+  anti_join(df_2020_tmp, by="district_code")
+
+# This time, it's the Holly RE-3 school district that is missing.
+df_2020 <- extract_missing_district(df_2017, df_2020_tmp)
+rm(df_2020_tmp)
+
+# Moving on to the 2021 school year dataset. This one is different yet again,
+# but patterns that we have used before can be applied to clean this up.
+df_2021 |> 
+  filter(!county_code %in% invalid_county_codes & 
+          county_code != "State Total*" & 
+          !is.na(county_code)) |> 
+  count()
+
+df_2021 <- df_2021 |> 
+  filter(!county_code %in% invalid_county_codes & 
+           county_code != "State Total*" & 
+           !is.na(county_code))
+
+# This results in 178 school districts, so we can move on.
+
+# The last dataset, the 2022-2023 school year. It looks similar in layout to
+# 2020.
+
+df_2022 |> 
+  filter(!county_code %in% invalid_county_codes & county_code != "State Total") |> 
+  count()
+
+df_2022 <- df_2022 |> 
+  filter(!county_code %in% invalid_county_codes & county_code != "State Total")
+
+# There are now 178 records, so this dataset is ready.
+
+# All of the dataset are now ready. They all contain an record for each school
+# district.
+
+# Finally, write CSV files to output folder for each dataset so that they can be
+# reused without have to reapply the processing steps.
 write_csv(df_2016, file="output/2016-2017_chronic_absenteeism.csv")
-
-
-
+write_csv(df_2017, file="output/2017-2018_chronic_absenteeism.csv")
+write_csv(df_2018, file="output/2018-2019_chronic_absenteeism.csv")
+write_csv(df_2019, file="output/2019-2020_chronic_absenteeism.csv")
+write_csv(df_2020, file="output/2020-2021_chronic_absenteeism.csv")
+write_csv(df_2021, file="output/2021-2022_chronic_absenteeism.csv")
+write_csv(df_2022, file="output/2022-2023_chronic_absenteeism.csv")

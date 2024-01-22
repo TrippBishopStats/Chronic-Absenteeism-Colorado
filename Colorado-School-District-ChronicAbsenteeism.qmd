@@ -1,18 +1,61 @@
 ---
 title: "Chronic Absenteeism in Colorado School Districts"
-subtitle: "School years 2016-2017 to  2022-2023"
+subtitle: "School years 2016-2017 to 2022-2023"
 author: "Tripp Bishop"
 format: html
 ---
 
+## Overview
+
+Add basic introductory text here such as stating the problem and introducing definitions. List the objectives of
+the analysis.
+
+### Definitions
+
+* **Truancy**: Truancy is defined as an unexcused absence. The rate is calculated by dividing the reported Total Student Days Unexcused Absences by the Total Student Days Possible.
+* **Habitually Truant (Student Count)**: A student is counted as habitually truant if the student has 4 excused absences in one month and/or 10 unexcused absences in one school year.
+* **Chronically Absent**: A student absent 10 percent or more of the days enrolled during the school year is chronically absent. All absences are included - unexcused and excused. The rate is the percentage of students enrolled who are chronically absent.
+
+### Objectives
+
+* Understand how rates of chronic absenteeism change temporally and spatial from 2016 to 2023.
+* Compare chronic absenteeism rates in different regions of Colorado
+* Understand if COVID-19 appears to have had a significant effect on chronic absentee rates.
+* Understand if school district size is correlated with chronic absentee rates.
+
+
 ## Data Sources
+
+Make general statements about the data sources and state assumptions about quality of the data.
 
 Absenteeism Data: [Colorado Department of Education](https://www.cde.state.co.us/cdereval/truancystatistics)
 
 School District Shape Files: [Colorado Geospatial Portal](https://geodata.colorado.gov/datasets/COOIT::school-districts/about)
 
-## Definitions
 
-* **Truancy**: Truancy is defined as an unexcused absence. The rate is calculated by dividing the reported Total Student Days Unexcused Absences by the Total Student Days Possible.
-* **Habitually Truant (Student Count)**: A student is counted as habitually truant if the student has 4 excused absences in one month and/or 10 unexcused absences in one school year.
-* **Chronically Absent**: A student absent 10 percent or more of the days enrolled during the school year is chronically absent. All absences are included - unexcused and excused. The rate is the percentage of students enrolled who are chronically absent.
+
+## Data prepartion
+
+### Standarising file names, fields, and naming conventions
+
+
+
+### The shape file
+
+School districts to repair --
+FREMONT RE-2 - Florence RE-2 School District
+CUSTER COUNTY SCHOOL DISTRICT C-1 - Consolidated C-1 School District (Westcliffe)
+JULESBURG RE-1 - Platte Valley RE-7 School District
+
+## Data processing
+
+
+
+## Analysis
+
+
+## Key findings
+
+
+
+
