@@ -149,16 +149,6 @@ df_2017 |>
 # This shows that the Karval district is missing from the 2016 data. We will add
 # the record to 2016 and put NA for the student data fields.
 
-# karval <- df_2017 |> 
-#   anti_join(df_2016, by="district_code") |> 
-#   mutate(
-#     absentee_students = NA,
-#     total_students = NA,
-#     chronically_absent_rate = NA
-#   )
-# 
-# df_2016 <- bind_rows(df_2016, karval) |> arrange(district_code)
-
 df_2016 <- extract_missing_district(df_2017, df_2016)
 
 
