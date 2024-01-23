@@ -1,8 +1,6 @@
-library(tidyverse)
-library(janitor)
-library(readxl)
-library(naniar)
-rm(list=ls())
+################################################################################
+### Dataset processing workflow.
+################################################################################
 
 source("scripts/functions.R")
 
@@ -150,7 +148,6 @@ df_2017 |>
 # the record to 2016 and put NA for the student data fields.
 
 df_2016 <- extract_missing_district(df_2017, df_2016)
-
 
 # The missing school district has now been added to the dataframe.
 
