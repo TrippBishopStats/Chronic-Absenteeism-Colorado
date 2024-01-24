@@ -16,6 +16,7 @@ rm(list=ls())
 # run all the preprocessing code.
 source("scripts/data-prep.R")
 standard_chart_colour <- "#001970"
+theme_set(theme_minimal())
 ```
 
 ## Overview
@@ -130,6 +131,17 @@ naniar::miss_case_summary(df_2022) |>
   rowid_to_column("case"), by=c("case"))
 ```
 
+### Merging the datasets
+
+```{r}
+df_master <- bind_rows(df_2016,
+                       df_2017,
+                       df_2018,
+                       df_2019,
+                       df_2020,
+                       df_2021,
+                       df_2022)
+```
 
 
 
@@ -143,25 +155,162 @@ positive values. The first, `chronically_absent_rate` should range between 0 and
 to ensure that all datasets include the same 178 school districts. Additionally,
 each dataset should contain 178 observations for the same school year.
 
+#### Verify counties
+
+```{r}
+df_master |> 
+  distinct(county_name)
+```
+There are 63 counties present. THis is good. There are 64 counties in the state, 
+but Broomfield county is missing because it does not have any school districts 
+of its own. It is served by existing districts.
+
+The names are in call caps, for aesthetics, these will be converted to proper
+case.
+
+```{r verify distinct counties}
+df_master <- df_master |> 
+  mutate(
+    county_name = str_to_title(county_name)
+  )
+
+df_master |> 
+  distinct(county_name)
+```
+
+
+
 #### Verify school districts
 
 Each dataset has 178 school district records. They should all be unique and 
-identical between school years. Since `district_code` can be converted to an
-integer, we can create a function that does this and then sums the resulting
-integers for each dataset.
+identical between school years.
+
+```{r distinct district count}
+district_count <- df_master |>
+  distinct(district_code) |> 
+  count() |> 
+  pull()
+
+district_count
+```
+This confirms that there are only `r district_count` districts in the dataset.
 
 ```{r}
-districts_2016 <- compute_district_total(df_2016)
-districts_2017 <- compute_district_total(df_2017)
-districts_2018 <- compute_district_total(df_2018)
-districts_2019 <- compute_district_total(df_2019)
-districts_2020 <- compute_district_total(df_2020)
-districts_2021 <- compute_district_total(df_2021)
-districts_2022 <- compute_district_total(df_2022)
+district_name_count <- df_master |>
+  distinct(district_name) |> 
+  count() |> 
+  pull()
+
+district_name_count
+```
+We have an issue with the `district_name` field, however. There are `r district_name_count` distinct
+values rather `r district_count`. We need to investigate the field to see if it
+is possible to normalise the `district_name` field.
+
+```{r}
+df_master |>
+  distinct(district_name)
+```
+After pouring through the data, it looks like the districts have both an all
+caps version and a proper case version. 
+
+
+
+
+```{r verify distinct school districts}
+
+distinct_districts <- df_master |> 
+  mutate(
+    district_name = str_to_title(district_name)
+  ) |> 
+  distinct(district_name) |> 
+  count() |> 
+  pull()
+distinct_districts
+```
+This gets us a lot closer. There are now only `r distinct_districts` distinct
+`district_name` values, but we still have `r distinct_districts - district_count`
+to normalise.
+
+Since we know that there are only `r district_count` distinct `district_code` 
+values, we can group by the `district_code` and find all instances where the
+`count()` is greater than 1. There should be `r distinct_districts - district_count`
+such instances.
+
+```{r}
+df_master |> 
+  mutate(
+    district_name = str_to_title(district_name)
+  ) |> 
+  distinct(district_name, district_code) |>
+  group_by(district_code) |> 
+  count() |> 
+  filter(n > 1)
+```
+These are the `r distinct_districts - district_count` districts. We can retrieve
+them to see what we need to do to normalise them. Before we do, we will make
+permanent the proper casing of the district names.
+
+```{r}
+df_master <- df_master |> 
+  mutate(
+    district_name = str_to_title(district_name)
+  )
+
+dupe_district_ids <- df_master |> 
+  mutate(
+    district_name = str_to_title(district_name)
+  ) |> 
+  distinct(district_name, district_code) |>
+  group_by(district_code) |> 
+  count() |> 
+  filter(n > 1) |> 
+  select(district_code) |> 
+  pull()
+
+df_master |> 
+  filter(district_code %in% dupe_district_ids) |> 
+  select(district_code, district_name) |> 
+  distinct() |> 
+  arrange(district_code)
+```
+Most of these issues are minor differences that are easily fixed. The only 
+significant differences are with district codes `0920`, `1110`, `2730`, and 
+`3100`. These records will need to be modified individually as there are no
+patterns to the discrepancies. When the issue is that there are different names
+in use, the one being used more recently will be adopted.
+
+```{r normalise district names}
+
+df_master <- df_master |> 
+  mutate(
+    district_name = case_when(district_name %in% c("Mc Clave Re-2","Mcclave Re-2") ~ "McClave Re-2",
+                              str_starts(district_name, "St Vrain Valley Re") ~ "St Vrain Valley Re-1j",
+                              # district 0920 is called "Elizabeth School District" most recently
+                              district_name == "Elizabeth C-1" ~ "Elizabeth School District",
+                              # district 1110 is called "District 49" most recently
+                              district_name == "Falcon 49" ~ "District 49",
+                              str_starts(district_name, "Moffat County") ~ "Moffat County Re-1",
+                              district_name == "Meeker Re1" ~ "Meeker Re-1",
+                              # district 2730 is called "Upper Rio Grande School District C-7" most recently
+                              district_name == "Del Norte C-7" ~ "Upper Rio Grande School District C-7",
+                              district_name == "Windsor Re-4" ~ "Weld Re-4",
+                              # district 3140 is called "Weld Re-8 Schools" most recently
+                              district_name == "Weld County S/D Re-8" ~ "Weld Re-8 Schools",
+                              TRUE ~ district_name)
+  )
 ```
 
-Every dataset has the same result, `r districts_2016`, so the 178 districts are 
-the same across all 7 datasets.
+This confirms that the `district_name` field has been normalised. Now there are
+only `r district_count` distinct values.
+
+```{r confirm district name normalisation}
+df_master |>
+  distinct(district_name) |> 
+  count()
+```
+
+
 
 #### Verify school year information
 
@@ -169,13 +318,10 @@ Each dataset should have a single value in the `school_year` field. If this is
 not the case, determine what the discrepancy is and make the correction.
 
 ```{r}
-school_year_2016_count <- school_year_count(df_2016)
-school_year_2017_count <- school_year_count(df_2017)
-school_year_2018_count <- school_year_count(df_2018)
-school_year_2019_count <- school_year_count(df_2019)
-school_year_2020_count <- school_year_count(df_2020)
-school_year_2021_count <- school_year_count(df_2021)
-school_year_2022_count <- school_year_count(df_2022)
+
+df_master |> 
+  group_by(school_year) |> 
+  count()
 ```
 
 The datasets all contain a single value for the `school_year`.
@@ -186,16 +332,7 @@ First, confirm that `chronically_absent_rate` contains valid values and their
 distribution with a histogram.
 
 ```{r}
-df_2016 |>
-  filter(!is.na(chronically_absent_rate)) |> 
-  ggplot(aes(x=chronically_absent_rate)) +
-  geom_histogram(binwidth = 0.05, colour="white", fill=standard_chart_colour) +
-  labs(
-    title = "Distribution of district chronic absenteeism",
-    subtitle = "School year 2016-2017",
-    x="Chronically absent rate",
-    y="Count"
-  )
+generate_absentee_rate(df_2016)
 ```
 The data range is valid, but the distribution is suspect. A significant number
 of the districts report 0 chronically absent students in 2016-2017. This seems
@@ -208,17 +345,9 @@ be answered on the [Colorado Department of Education website](https://www.cde.st
 summary(df_2016$total_students)
 ```
 
-```{r}
-df_2016 |>
-  filter(!is.na(total_students)) |> 
-  ggplot(aes(x=total_students)) +
-  geom_histogram(colour="white", fill=standard_chart_colour) +
-  labs(
-    title = "Distribution of district student enrollment",
-    subtitle = "School year 2016-2017",
-    x="Student enrollment",
-    y="Count"
-  )
+```{r 2016 total student distribution}
+#| message: false
+generate_total_enrollment(df_2016)
 ```
 
 ```{r}
@@ -227,16 +356,7 @@ summary(df_2016$absentee_students)
 
 
 ```{r}
-df_2016 |>
-  filter(!is.na(absentee_students)) |> 
-  ggplot(aes(x=absentee_students)) +
-  geom_histogram(colour="white", fill=standard_chart_colour) +
-  labs(
-    title = "Distribution of district chronic absenteeism",
-    subtitle = "School year 2016-2017",
-    x="Absentee students",
-    y="Count"
-  )
+generate_absentee_enrollment(df_2016)
 ```
 
 #### 2017-2018 school year data
@@ -244,41 +364,43 @@ df_2016 |>
 First, confirm that `chronically_absent_rate` contains valid values and their
 distribution with a histogram.
 
-```{r}
-df_2017 |>
-  filter(!is.na(chronically_absent_rate)) |> 
-  ggplot(aes(x=chronically_absent_rate)) +
-  geom_histogram(binwidth = 0.05, colour="white", fill=standard_chart_colour) +
-  labs(
-    title = "Distribution of district chronic absenteeism",
-    subtitle = "School year 2017-2018",
-    x="Chronically absent rate",
-    y="Count"
-  )
+```{r 2017 absentee rate}
+generate_absentee_rate(df_2017)
+```
+```{r 2017 total student distribution}
+#| message: false
+generate_total_enrollment(df_2017)
 ```
 
 
 
+```{r 2017 absentee enrollement}
+#| message: false
+generate_absentee_enrollment(df_2017)
+```
 
 #### 2018-2019 school year data
 
 First, confirm that `chronically_absent_rate` contains valid values and their
 distribution with a histogram.
 
-```{r}
-df_2018 |>
-  filter(!is.na(chronically_absent_rate)) |> 
-  ggplot(aes(x=chronically_absent_rate)) +
-  geom_histogram(binwidth = 0.05, colour="white", fill=standard_chart_colour) +
-  labs(
-    title = "Distribution of district chronic absenteeism",
-    subtitle = "School year 2018-2019",
-    x="Chronically absent rate",
-    y="Count"
-  )
+```{r 2018 absentee rate distribution}
+generate_absentee_rate(df_2018)
 ```
 
 
+
+```{r 2018 total student distribution}
+#| message: false
+generate_total_enrollment(df_2018)
+```
+
+
+
+```{r 2018 absentee enrollement distribution}
+#| message: false
+generate_absentee_enrollment(df_2018)
+```
 
 
 
@@ -287,17 +409,22 @@ df_2018 |>
 First, confirm that `chronically_absent_rate` contains valid values and their
 distribution with a histogram.
 
-```{r}
-df_2019 |>
-  filter(!is.na(chronically_absent_rate)) |> 
-  ggplot(aes(x=chronically_absent_rate)) +
-  geom_histogram(binwidth = 0.05, colour="white", fill=standard_chart_colour) +
-  labs(
-    title = "Distribution of district chronic absenteeism",
-    subtitle = "School year 2019-2020",
-    x="Chronically absent rate",
-    y="Count"
-  )
+```{r 2019 absentee rate distribution}
+generate_absentee_rate(df_2019)
+```
+
+
+
+```{r 2019 total student distribution}
+#| message: false
+generate_total_enrollment(df_2019)
+```
+
+
+
+```{r 2019 absentee enrollement distribution}
+#| message: false
+generate_absentee_enrollment(df_2019)
 ```
 
 
@@ -306,17 +433,22 @@ df_2019 |>
 First, confirm that `chronically_absent_rate` contains valid values and their
 distribution with a histogram.
 
-```{r}
-df_2020 |>
-  filter(!is.na(chronically_absent_rate)) |> 
-  ggplot(aes(x=chronically_absent_rate)) +
-  geom_histogram(binwidth = 0.05, colour="white", fill=standard_chart_colour) +
-  labs(
-    title = "Distribution of district chronic absenteeism",
-    subtitle = "School year 2020-2021",
-    x="Chronically absent rate",
-    y="Count"
-  )
+```{r 2020 absentee rate distribution}
+generate_absentee_rate(df_2020)
+```
+
+
+
+```{r 2020 total student distribution}
+#| message: false
+generate_total_enrollment(df_2020)
+```
+
+
+
+```{r 2020 absentee enrollement distribution}
+#| message: false
+generate_absentee_enrollment(df_2020)
 ```
 
 
@@ -325,17 +457,22 @@ df_2020 |>
 First, confirm that `chronically_absent_rate` contains valid values and their
 distribution with a histogram.
 
-```{r}
-df_2021 |>
-  filter(!is.na(chronically_absent_rate)) |> 
-  ggplot(aes(x=chronically_absent_rate)) +
-  geom_histogram(binwidth = 0.05, colour="white", fill=standard_chart_colour) +
-  labs(
-    title = "Distribution of district chronic absenteeism",
-    subtitle = "School year 2021-2022",
-    x="Chronically absent rate",
-    y="Count"
-  )
+```{r 2021 absentee rate distribution}
+generate_absentee_rate(df_2021)
+```
+
+
+
+```{r 2021 total student distribution}
+#| message: false
+generate_total_enrollment(df_2021)
+```
+
+
+
+```{r 2021 absentee enrollement distribution}
+#| message: false
+generate_absentee_enrollment(df_2021)
 ```
 
 
@@ -345,17 +482,22 @@ df_2021 |>
 First, confirm that `chronically_absent_rate` contains valid values and their
 distribution with a histogram.
 
-```{r}
-df_2022 |>
-  filter(!is.na(chronically_absent_rate)) |> 
-  ggplot(aes(x=chronically_absent_rate)) +
-  geom_histogram(binwidth = 0.05, colour="white", fill=standard_chart_colour) +
-  labs(
-    title = "Distribution of district chronic absenteeism",
-    subtitle = "School year 2022-2023",
-    x="Chronically absent rate",
-    y="Count"
-  )
+```{r 2022 absentee rate distribution}
+generate_absentee_rate(df_2022)
+```
+
+
+
+```{r 2022 total student distribution}
+#| message: false
+generate_total_enrollment(df_2022)
+```
+
+
+
+```{r 2022 absentee enrollement distribution}
+#| message: false
+generate_absentee_enrollment(df_2022)
 ```
 
 
