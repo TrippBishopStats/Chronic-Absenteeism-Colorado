@@ -37,11 +37,52 @@ compute_district_total <- function(data) {
 }
 
 ################################################################################
-### Count distinct school year codes for a given dataset.                    ###
+### Histogram of district chronic absentee rates.                            ###
 ################################################################################
-school_year_count <- function(data) {
-  data |> 
-    distinct(school_year) |> 
-    count() |> 
-    pull()
+generate_absentee_rate <- function(data) {
+  school_year <- data |> distinct(school_year) |> pull()
+  data |>
+    filter(!is.na(chronically_absent_rate)) |> 
+    ggplot(aes(x=chronically_absent_rate)) +
+    geom_histogram(binwidth = 0.05, colour="white", fill=standard_chart_colour) +
+    labs(
+      title = "Distribution of district chronic absenteeism",
+      subtitle = paste("School year", school_year),
+      x="Chronically absent rate",
+      y="Count"
+    )
+}
+
+################################################################################
+### Histogram of district total enrollments.                                 ###
+################################################################################
+generate_total_enrollment <- function(data) {
+  school_year <- data |> distinct(school_year) |> pull()
+  data |>
+    filter(!is.na(total_students)) |> 
+    ggplot(aes(x=total_students)) +
+    geom_histogram(colour="white", fill=standard_chart_colour) +
+    labs(
+      title = "Distribution of district student enrollment",
+      subtitle = paste("School year",school_year),
+      x="Student enrollment",
+      y="Count"
+    )
+}
+
+################################################################################
+### Histogram of district absentee students.                                 ###
+################################################################################
+generate_absentee_enrollment <- function(data) {
+  school_year <- data |> distinct(school_year) |> pull()
+  data |>
+    filter(!is.na(absentee_students)) |> 
+    ggplot(aes(x=absentee_students)) +
+    geom_histogram(colour="white", fill=standard_chart_colour) +
+    labs(
+      title = "Distribution of district chronic absenteeism",
+      subtitle = paste("School year", school_year),
+      x="Absentee students",
+      y="Count"
+    )
 }
