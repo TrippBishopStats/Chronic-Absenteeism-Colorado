@@ -407,6 +407,38 @@ The number of students enrolled in each district varies widely from less than 10
 to more than 85,000. The numbers are consistent and there are no invalid values
 in the dataset.
 
+```{r total students 5 number summary}
+df_master |> 
+  group_by(school_year) |> 
+  summarise(
+    min_count = min(total_students, na.rm = TRUE),
+    quartile_1 = quantile(total_students, 0.25, na.rm = TRUE),
+    median = median(total_students, na.rm = TRUE),
+    quartile_3 = quantile(total_students, 0.75, na.rm = TRUE),
+    max_count = max(total_students, na.rm = TRUE),
+  )
+```
+
+The minimum counts for the first two years look suspect. The district is the 
+same in both cases, the Agate 300 school district.
+
+```{r}
+df_master |> 
+  filter(total_students == 5 | total_students == 4) |> 
+  select(district_code, district_name, total_students, school_year)
+```
+
+```{r}
+df_master |> 
+  filter(district_code == "0960")
+```
+
+The `total_students` data for Agate 300 school district is quite variable, but
+5 and 4 seem like extremely low counts given the other 5 years of data 
+available. It will not affect the outcome of this study, but a follow-up to
+determine the true values for the 2016-2017 and 2017-2018 school years would be
+useful.
+
 ```{r total students enrolled analysis}
 #| message: false
 df_master |>
@@ -425,6 +457,19 @@ df_master |>
 The number of chronically absent students in each district varies widely from 0
 to more than 40,000. The numbers are consistent and there are no invalid values
 in the dataset.
+
+```{r absent students 5 number summary}
+df_master |> 
+  group_by(school_year) |> 
+  summarise(
+    min_count = min(absentee_students, na.rm = TRUE),
+    quartile_1 = quantile(absentee_students, 0.25, na.rm = TRUE),
+    median = median(absentee_students, na.rm = TRUE),
+    quartile_3 = quantile(absentee_students, 0.75, na.rm = TRUE),
+    max_count = max(absentee_students, na.rm = TRUE),
+  )
+```
+
 
 ```{r absentee students count analysis}
 #| message: false
@@ -478,6 +523,11 @@ df_master <- df_master |>
   relocate(district_size, .before=chronically_absent_rate)
 ```
 
+The number of districts in each group is consistent from year to year. The smaller
+school districts, those in the `Small` and `Micro` categories, have the most
+variability. This is not surprising as small changes in student population can 
+move a district from one category to another.
+
 ```{r}
 df_master |> 
   ggplot(aes(x=district_size)) +
@@ -489,15 +539,35 @@ df_master |>
     y="Count"
   )
 ```
+The `pct_diff` data looks to be consistent with what we know about the rest of
+the data in this dataset. The 5 number summary shows how volatile the
+absenteeism rates can be, particularly around the first COVID-19 school year
+2019-2020.
+
+```{r percent difference 5 number summary}
+df_master |>
+  filter(school_year != "2016-2017") |> 
+  group_by(school_year) |> 
+  summarise(
+    min_count = min(pct_diff, na.rm = TRUE),
+    quartile_1 = quantile(pct_diff, 0.25, na.rm = TRUE),
+    median = median(pct_diff, na.rm = TRUE),
+    quartile_3 = quantile(pct_diff, 0.75, na.rm = TRUE),
+    max_count = max(pct_diff, na.rm = TRUE),
+  )
+```
+
+The histograms show that the `pct_diff` data is normally distributed but with
+significant outliers in the 2019-2020 and 2020-2021 school years.
 
 ```{r}
+#| message: false
 df_master |> 
   filter(!is.na(pct_diff)) |> 
   ggplot(aes(x=pct_diff)) +
-  geom_histogram(colour="white", fill=standard_chart_colour) +
+  geom_histogram(binwidth=0.1, colour="white", fill=standard_chart_colour) +
   facet_wrap(~school_year)
 ```
-
 
 ### Create master data file
 Now that the data preparation and processing have been completed, the complete
@@ -510,190 +580,39 @@ write_csv(df_master, file = "output/2016-2023-master_chronic_absenteeism.csv")
 ## Analysis
 
 
+
+
+
+
+```{r absenteeism trends}
+#| message: false
+
+library(RColorBrewer)
+
+df_master |> 
+  group_by(district_size, school_year) |> 
+  summarise(
+    avg_rate = sum(absentee_students, na.rm = TRUE)/sum(total_students, na.rm = TRUE)
+  ) |> 
+  ggplot(aes(x=school_year, y=avg_rate*100, group=district_size)) +
+  geom_line(aes(colour=district_size), linewidth=1) +
+  scale_colour_manual(values = c("#C7E9B4", "#7FCDBB", "#41B6C4", "#1D91C0", "#225EA8")) +
+  labs(
+    x=element_blank(),
+    y="Percent Absentee",
+    title="Absenteeism is increasing over time"
+  )
+```
+
+
+
+
+
 ## Key findings
 
 
 
 
-
-
-
-
-
-
-#### 2016-2017 school year data
-
-First, confirm that `chronically_absent_rate` contains valid values and their
-distribution with a histogram.
-
-```{r}
-generate_absentee_rate(df_2016)
-```
-The data range is valid, but the distribution is suspect. A significant number
-of the districts report 0 chronically absent students in 2016-2017. This seems
-unlikely. Is 0 being used to indicate "no data" or do these districts actually 
-have no students that are chronically absent? This question does not appear to
-be answered on the [Colorado Department of Education website](https://www.cde.state.co.us/dropoutprevention/attendance).
-
-
-```{r}
-summary(df_2016$total_students)
-```
-
-```{r 2016 total student distribution}
-#| message: false
-generate_total_enrollment(df_2016)
-```
-
-```{r}
-summary(df_2016$absentee_students)
-```
-
-
-```{r}
-generate_absentee_enrollment(df_2016)
-```
-
-#### 2017-2018 school year data
-
-First, confirm that `chronically_absent_rate` contains valid values and their
-distribution with a histogram.
-
-```{r 2017 absentee rate}
-generate_absentee_rate(df_2017)
-```
-```{r 2017 total student distribution}
-#| message: false
-generate_total_enrollment(df_2017)
-```
-
-
-
-```{r 2017 absentee enrollement}
-#| message: false
-generate_absentee_enrollment(df_2017)
-```
-
-#### 2018-2019 school year data
-
-First, confirm that `chronically_absent_rate` contains valid values and their
-distribution with a histogram.
-
-```{r 2018 absentee rate distribution}
-generate_absentee_rate(df_2018)
-```
-
-
-
-```{r 2018 total student distribution}
-#| message: false
-generate_total_enrollment(df_2018)
-```
-
-
-
-```{r 2018 absentee enrollement distribution}
-#| message: false
-generate_absentee_enrollment(df_2018)
-```
-
-
-
-#### 2019-2020 school year data
-
-First, confirm that `chronically_absent_rate` contains valid values and their
-distribution with a histogram.
-
-```{r 2019 absentee rate distribution}
-generate_absentee_rate(df_2019)
-```
-
-
-
-```{r 2019 total student distribution}
-#| message: false
-generate_total_enrollment(df_2019)
-```
-
-
-
-```{r 2019 absentee enrollement distribution}
-#| message: false
-generate_absentee_enrollment(df_2019)
-```
-
-
-#### 2020-2021 school year data
-
-First, confirm that `chronically_absent_rate` contains valid values and their
-distribution with a histogram.
-
-```{r 2020 absentee rate distribution}
-generate_absentee_rate(df_2020)
-```
-
-
-
-```{r 2020 total student distribution}
-#| message: false
-generate_total_enrollment(df_2020)
-```
-
-
-
-```{r 2020 absentee enrollement distribution}
-#| message: false
-generate_absentee_enrollment(df_2020)
-```
-
-
-#### 2021-2022 school year data
-
-First, confirm that `chronically_absent_rate` contains valid values and their
-distribution with a histogram.
-
-```{r 2021 absentee rate distribution}
-generate_absentee_rate(df_2021)
-```
-
-
-
-```{r 2021 total student distribution}
-#| message: false
-generate_total_enrollment(df_2021)
-```
-
-
-
-```{r 2021 absentee enrollement distribution}
-#| message: false
-generate_absentee_enrollment(df_2021)
-```
-
-
-
-#### 2022-2023 school year data
-
-First, confirm that `chronically_absent_rate` contains valid values and their
-distribution with a histogram.
-
-```{r 2022 absentee rate distribution}
-generate_absentee_rate(df_2022)
-```
-
-
-
-```{r 2022 total student distribution}
-#| message: false
-generate_total_enrollment(df_2022)
-```
-
-
-
-```{r 2022 absentee enrollement distribution}
-#| message: false
-generate_absentee_enrollment(df_2022)
-```
 
 
 
