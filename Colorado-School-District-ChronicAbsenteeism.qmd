@@ -342,6 +342,28 @@ df_master <- df_master |>
 This field represents the proportion of K-12 students who are chronically
 absent. Values should range from 0 to 1 inclusive.
 
+```{r head chronically_absent_rate}
+df_master |> 
+  select(chronically_absent_rate) |> 
+  head()
+```
+This field has way too many significant figures. Most of these are meaningless 
+and later years in the dataset have fewer significant figures, so the additional
+significant figures will be removed by rounding.
+
+```{r tail chronically_absent_rate}
+df_master |> 
+  select(chronically_absent_rate) |> 
+  tail()
+```
+```{r round chronically_absent_rate to 3 sig figs}
+df_master <- df_master |> 
+  mutate(
+    chronically_absent_rate = round(chronically_absent_rate, 3)
+  )
+```
+ 
+
 ```{r confirm chronic absentism rate data}
 #| warning: false
 df_master |> 
@@ -417,6 +439,65 @@ df_master |>
       y="Count"
     )
 ```
+
+## Feature creation
+Two new features will be made from the current data: `district_size` and `pct_diff`. 
+The first feature is a ordered categorical variable that describes the size of 
+the district. There are five levels. From smallest to largest they are
+
+* Micro
+* Small
+* Intermediate
+* Medium
+* Large
+
+The second feature is the change in chronic absenteeism rate from year to year.
+The values for all districts in the 2016-2017 school year are `NA` as this is
+the first year in the dataset.
+
+```{r}
+df_master <- df_master |> 
+  mutate(
+    district_size = case_when(
+      total_students > 15000 ~ "Large",
+      total_students > 3000 ~ "Medium",
+      total_students > 750 ~ "Intermediate",
+      total_students > 100 ~ "Small",
+      TRUE ~ "Micro"
+    )
+  ) |> 
+  mutate(
+    district_size = fct_relevel(district_size, "Micro", "Small", "Intermediate", "Medium", "Large")
+  ) |> 
+  group_by(district_code) |> 
+  arrange(school_year) |> 
+  mutate(
+    pct_diff = chronically_absent_rate - lag(chronically_absent_rate, n=1, order_by = district_code)
+  ) |>
+  ungroup(district_code) |> 
+  relocate(district_size, .before=chronically_absent_rate)
+```
+
+```{r}
+df_master |> 
+  ggplot(aes(x=district_size)) +
+  geom_bar(fill=standard_chart_colour) +
+  facet_wrap(~school_year) +
+  coord_flip() +
+  labs(
+    x="District size",
+    y="Count"
+  )
+```
+
+```{r}
+df_master |> 
+  filter(!is.na(pct_diff)) |> 
+  ggplot(aes(x=pct_diff)) +
+  geom_histogram(colour="white", fill=standard_chart_colour) +
+  facet_wrap(~school_year)
+```
+
 
 ### Create master data file
 Now that the data preparation and processing have been completed, the complete
