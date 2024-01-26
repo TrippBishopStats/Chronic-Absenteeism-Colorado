@@ -16,6 +16,7 @@ rm(list=ls())
 # run all the preprocessing code.
 source("scripts/data-prep.R")
 standard_chart_colour <- "#001970"
+district_size_palette <- c("#999999", "#009E73", "#0072B2", "#D55E00", "#CC79A7")
 theme_set(theme_minimal())
 ```
 
@@ -97,7 +98,7 @@ district code was not difficult, but the following 3 school districts required
 some additional research as the district names were considerably different in
 the shape file and absentee dataset.
 
-### School districts to repair
+#### School districts to repair
 
 The following table contains the district name discrepancies.
 
@@ -207,7 +208,7 @@ each dataset should contain 178 observations for the same school year.
 df_master |> 
   distinct(county_name)
 ```
-There are 63 counties present. THis is good. There are 64 counties in the state, 
+There are 63 counties present. This is good. There are 64 counties in the state, 
 but Broomfield county is missing because it does not have any school districts 
 of its own. It is served by existing districts.
 
@@ -229,7 +230,7 @@ Now we need to verify the county codes.
 ```{r list distinct county codes} 
 df_master |> 
   distinct(county_code) |> 
-  count()
+  pull()
 ```
 There are 63 county codes. The data are consistent.
 
@@ -633,8 +634,6 @@ write_csv(df_master, file = "output/2016-2023-master_chronic_absenteeism.csv")
 ```{r absenteeism trends}
 #| message: false
 
-library(RColorBrewer)
-
 df_master |> 
   group_by(district_size, school_year) |> 
   summarise(
@@ -642,7 +641,7 @@ df_master |>
   ) |> 
   ggplot(aes(x=school_year, y=avg_rate*100, group=district_size)) +
   geom_line(aes(colour=district_size), linewidth=1) +
-  scale_colour_manual(values = c("#C7E9B4", "#7FCDBB", "#41B6C4", "#1D91C0", "#225EA8")) +
+  scale_colour_manual(values = district_size_palette)+
   labs(
     x=element_blank(),
     y="Percent Absentee",
@@ -650,13 +649,72 @@ df_master |>
   )
 ```
 
+```{r}
+
+brewer.pal(11, "RdBu")
+
+total_enrollment_year <- df_master |> 
+  group_by(school_year) |> 
+  summarise(
+    total_enrollment = sum(total_students, na.rm = TRUE)
+  )
+
+total_enrollment_year |> 
+  mutate(
+    pct_change = 100*(total_enrollment - lag(total_enrollment))/lag(total_enrollment),
+    pos = if_else(pct_change>0, TRUE, FALSE)
+  ) |> 
+  filter(school_year != "2016-2017") |> 
+  ggplot(aes(x=school_year, y=pct_change, fill=pos)) +
+  geom_col(position = "identity") +
+  scale_fill_manual(values = c("#D6604D", "#92C5DE"), guide = FALSE) +
+  labs(
+    x="School year",
+    y="% change",
+    title="Percent change in total enrollment for Colorado",
+    subtitle="2017-2023"
+  )
+```
+
+```{r}
+#| message: false
+df_master |> 
+  group_by(district_size, school_year) |> 
+  summarise(
+    student_enrollment = sum(total_students, na.rm = TRUE)
+  ) |> 
+  inner_join(total_enrollment_year, by= "school_year") |> 
+  mutate(
+    pct_of_total = round(student_enrollment/total_enrollment,3)*100
+  ) |> 
+  ggplot(aes(x=fct_rev(school_year),y=pct_of_total,group=district_size, fill=district_size)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_manual(values=district_size_palette) +
+  labs(
+    x="School year",
+    y="% of total",
+    title="District size percentage of total enrollment",
+    subtitle="2016-2023",
+    fill="District size"
+  ) +
+  theme(
+    legend.position = "bottom"
+  )
+  
+```
 
 
 
 
 ## Key findings
 
-
+* Chronic absenteeism is increasing between 2016 and 2023 with a noticeable increase in the rate of absenteeism during the COVID-19 pandemic.
+* Rates of absenteeism appear to be declining, but it is too early to establish a trend.
+* The pandemic appears to have caused a migration of students into and then out of larger school districts. This flux of
+students may have contributed to increased rates of absenteeism during this time.
+* Smaller districts generally have rate rates of absenteeism than larger ones.
+* About 7 in 10 Colorado students are enrolled in large school districts. Given that these districts also have higher rates of absenteeism, State efforts to address the problem should focus on these districts
 
 
 
