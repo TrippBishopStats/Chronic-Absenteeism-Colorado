@@ -51,15 +51,61 @@ School District Shape Files: [Colorado Geospatial Portal](https://geodata.colora
 ## Data prepartion
 
 ### Standarising file names, fields, and naming conventions
+The data for this analysis came in the form of Excel spreadsheets with varying
+name formats. The individual school year file names were standardised with the
+following format: `startyear-endyear_ChronicAbsenteeism.xslx`. For example, data
+for the 2016-2017 school year is contained in the file 
+`2016-2017_ChronicAbsenteeism.xlsx`.
 
+In addition to discrepancies in file names, there were inconsistencies in the
+field names between years.
 
+The truancy data was removed from the dataset since chronic absenteeism is the
+focus of this analysis. All fields were converted to "clean" names that facilitate
+working with them programmatically. Differences in field names between the data
+files were normalised so that all intermediate datasets have the same fields.
+
+The changes required for each year's data are detailed in the following sections.
+
+#### 2016-2017
+* Fields were renamed to match standard names.
+* Truancy field was dropped.
+* The `school_year` field was missing.
+
+#### 2017-2018/2018-2019
+* Fields were renamed to match standard names.
+* Truancy fields were dropped.
+
+#### 2019-2020/2020-2021/2021-2022
+* Fields were renamed to match standard names.
+* Truancy fields were dropped.
+* `2021_2022_student_count` field was renamed to `total_students`
 
 ### The shape file
 
-School districts to repair --
-FREMONT RE-2 - Florence RE-2 School District
-CUSTER COUNTY SCHOOL DISTRICT C-1 - Consolidated C-1 School District (Westcliffe)
-JULESBURG RE-1 - Platte Valley RE-7 School District
+The shape file contains all of the geometries needed to successfully create the
+school districts in mapping software. The problem is that the school district
+names in the file do not always match the names in the absentee datasets. There
+are no other fields in the existing data to associate the district geometries
+with the absentee data. Such a relationship is essential for using the data to 
+create dashboards in Tableau.
+
+To solve this problem, the `district_code` field has manually added to the
+shape file to provide a simple way of creating the relationship between the
+district geometries and the absentee data. In most cases, associating the correct
+district code was not difficult, but the following 3 school districts required
+some additional research as the district names were considerably different in
+the shape file and absentee dataset.
+
+### School districts to repair
+
+The following table contains the district name discrepancies.
+
+| Absentee dataset district name  | Shapefile district name |
+|---|---|
+| FREMONT RE-2  | Florence RE-2 School District  |
+| CUSTER COUNTY SCHOOL DISTRICT C-1  | Consolidated C-1 School District (Westcliffe)  |
+| Revere School District  | Platte Valley RE-7 School District  |
 
 ## Data processing
 
