@@ -82,10 +82,29 @@ for the 2016-2017 school year is contained in the file
 In addition to discrepancies in file names, there were inconsistencies in the
 field names between years.
 
+### Dataset structure standardisation
+While the individual datasets contain most of the same data, the structure of the data varies from year to year. The following structure has been imposed on all school year datasets so that they can be merging into a single, master dataset.
+
+| Field name  | Data type  |
+|---|---|
+| school_year  |  ordinal factor |
+| county_code  |  character |
+| county_name  |  character |
+| district_code  |  character |
+| district_name  |  character |
+| absentee_students  |  numeric |
+| total_students  |  numeric  |
+| **district_size**  |  ordinal_factor |
+| chronically_absent_rate  |  numeric |
+| **pct_diff**  | numeric  |
+
+Field names in **bold** are derived fields that are not in the original data. Details can be found in the [Feature creation](#feature-creation) section below.
+
 The truancy data was removed from the dataset since chronic absenteeism is the
 focus of this analysis. All fields were converted to "clean" names that facilitate
-working with them programmatically. Differences in field names between the data
-files were normalised so that all intermediate datasets have the same fields.
+working with them programmatically. This entails replacing spaces with underscores, 
+converting all characters to lower case, and ensuring that fields do not start 
+with a numeral.
 
 The changes required for each year's data are detailed in the following sections.
 
@@ -101,10 +120,16 @@ The changes required for each year's data are detailed in the following sections
 #### 2019-2020/2020-2021/2021-2022
 * Fields were renamed to match standard names.
 * Truancy fields were dropped.
-* `2021_2022_student_count` field was renamed to `total_students`
+* `2021_2022_student_count` field was renamed to `total_students`.
+
+#### 2022-2023
+* Fields were renamed to match standard names.
+* Truancy fields were dropped.
+* `k_12_student_count_used_in_chronic_absent_rate` field was renamed to `total_students`.
+* `chronic_absent_count` field was renamed to `absentee_count`.
+* Fields were reordered to conform to dataset structure standard.
 
 ### The shape file
-
 The shape file contains all of the geometries needed to successfully create the
 school districts in mapping software. The problem is that the school district
 names in the file do not always match the names in the absentee datasets. There
@@ -120,7 +145,6 @@ some additional research as the district names were considerably different in
 the shape file and absentee dataset.
 
 #### School districts to repair
-
 The following table contains the district name discrepancies.
 
 | Absentee dataset district name  | Shapefile district name |
@@ -129,19 +153,25 @@ The following table contains the district name discrepancies.
 | CUSTER COUNTY SCHOOL DISTRICT C-1  | Consolidated C-1 School District (Westcliffe)  |
 | Revere School District  | Platte Valley RE-7 School District  |
 
-
 ```{r run data prepartion script}
 # run all the preprocessing code.
 source("scripts/data-prep.R")
 ```
 
 ## Data processing
+Data processing involves investigating the data looking for:
+1) missing data
+2) inconsistent data
+3) typos and other errors in character data
+4) errors in numeric data
+
+Once found, errors need to be corrected or otherwise acknowledged so that later analysis is not impacted.
 
 ### Understanding missingness
-
-
+It is important to understand what data is missing from each dataset. The R package `naniar` is used to identify records which have a least one field that is missing data.
 
 #### 2016-2017 school year
+The only record with data missing in the 2016-2017 dataset is information for the `Karval RE-23` school district. Fields with missing data are `absentee_students`, `total_students`, and `chronically_absent_rate`. This is the result of this district having been missing in the original data and being added to the dataset during data preparation. Rather than attempt to impute the missing data, it will be left missing.
 
 ```{r check for missingness 2016}
 naniar::miss_case_summary(df_2016) |> 
@@ -151,6 +181,7 @@ naniar::miss_case_summary(df_2016) |>
 ```
 
 #### 2017-2018 school year
+There is no data missing from the 2017-2018 dataset.
 
 ```{r check for missingness 2017}
 naniar::miss_case_summary(df_2017) |> 
@@ -160,6 +191,7 @@ naniar::miss_case_summary(df_2017) |>
 ```
 
 #### 2018-2019 school year
+The only record with data missing in the 2018-2019 dataset is information for the `Cheraw 31` school district. Fields with missing data are `absentee_students`, `total_students`, and `chronically_absent_rate`. This is the result of this district having been missing in the original data and being added to the dataset during data preparation. Rather than attempt to impute the missing data, it will be left missing.
 
 ```{r check for missingness 2018}
 naniar::miss_case_summary(df_2018) |> 
@@ -169,6 +201,7 @@ naniar::miss_case_summary(df_2018) |>
 ```
 
 #### 2019-2020 school year
+There is no data missing from the 2019-2020 dataset.
 
 ```{r check for missingness 2019}
 naniar::miss_case_summary(df_2019) |> 
@@ -178,6 +211,7 @@ naniar::miss_case_summary(df_2019) |>
 ```
 
 #### 2020-2021 school year
+The only record with data missing in the 2020-2021 dataset is information for the `Holly RE-3` school district. Fields with missing data are `absentee_students`, `total_students`, and `chronically_absent_rate`. This is the result of this district having been missing in the original data and being added to the dataset during data preparation. Rather than attempt to impute the missing data, it will be left missing.
 
 ```{r check for missingness 2020}
 naniar::miss_case_summary(df_2020) |> 
@@ -187,6 +221,7 @@ naniar::miss_case_summary(df_2020) |>
 ```
 
 #### 2021-2022 school year
+There is no data missing from the 2021-2022 dataset.
 
 ```{r check for missingness 2021}
 naniar::miss_case_summary(df_2021) |> 
@@ -195,8 +230,8 @@ naniar::miss_case_summary(df_2021) |>
   rowid_to_column("case"), by=c("case"))
 ```
 
-
 #### 2022-2023 school year
+There is no data missing from the 2022-2023 dataset.
 
 ```{r check for missingness 2022}
 naniar::miss_case_summary(df_2022) |> 
@@ -206,6 +241,7 @@ naniar::miss_case_summary(df_2022) |>
 ```
 
 ### Merging the datasets
+To facilitate further analysis, the individual school year datasets will be merged into a single master dataset.
 
 ```{r}
 df_master <- bind_rows(df_2016,
@@ -216,9 +252,6 @@ df_master <- bind_rows(df_2016,
                        df_2021,
                        df_2022)
 ```
-
-
-
 
 ### Examination of unvariates
 
@@ -389,7 +422,6 @@ df_master |>
 ```
 
 #### Verify school year information
-
 Each dataset should have a single value in the `school_year` field. If this is
 not the case, determine what the discrepancy is and make the correction.
 
@@ -564,11 +596,11 @@ Two new features will be made from the current data: `district_size` and `pct_di
 The first feature is a ordered categorical variable that describes the size of 
 the district. There are five levels. From smallest to largest they are
 
-* Micro
-* Small
-* Intermediate
-* Medium
-* Large
+* Micro - Up to 100 students
+* Small - 101 to 750 students
+* Intermediate - 751 to 3000 students
+* Medium - 3001 to 15000 students
+* Large - More than 15000 students
 
 The second feature is the change in chronic absenteeism rate from year to year.
 The values for all districts in the 2016-2017 school year are `NA` as this is
@@ -667,9 +699,6 @@ write_csv(df_2022, file="output/2022-2023_chronic_absenteeism.csv")
 
 
 
-
-
-
 ```{r absenteeism trends}
 #| message: false
 
@@ -687,6 +716,8 @@ df_master |>
     title="Absenteeism is increasing over time"
   )
 ```
+
+
 
 ```{r visualise enrollment pct change}
 total_enrollment_year <- df_master |> 
@@ -711,6 +742,8 @@ total_enrollment_year |>
     subtitle="2017-2023"
   )
 ```
+
+
 
 ```{r visual district size percentages}
 #| message: false
