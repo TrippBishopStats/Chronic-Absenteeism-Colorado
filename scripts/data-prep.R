@@ -228,13 +228,3 @@ df_2022 <- df_2022 |>
 
 # All of the dataset are now ready. They all contain an record for each school
 # district.
-
-# Finally, write CSV files to output folder for each dataset so that they can be
-# reused without have to reapply the processing steps.
-write_csv(df_2016, file="output/2016-2017_chronic_absenteeism.csv")
-write_csv(df_2017, file="output/2017-2018_chronic_absenteeism.csv")
-write_csv(df_2018, file="output/2018-2019_chronic_absenteeism.csv")
-write_csv(df_2019, file="output/2019-2020_chronic_absenteeism.csv")
-write_csv(df_2020, file="output/2020-2021_chronic_absenteeism.csv")
-write_csv(df_2021, file="output/2021-2022_chronic_absenteeism.csv")
-write_csv(df_2022, file="output/2022-2023_chronic_absenteeism.csv")
