@@ -12,9 +12,13 @@ library(tidyverse)
 library(janitor)
 library(readxl)
 library(naniar)
+library(sf)
+library(viridis)
+library(gt)
 rm(list=ls())
 standard_chart_colour <- "#001970"
-district_size_palette <- c("#999999", "#009E73", "#0072B2", "#D55E00", "#CC79A7")
+district_size_palette <- c("#d2f5ab", "#a9ecb9", "#73dbc8", "#51bbbf", "#40869d")
+
 theme_set(theme_minimal())
 ```
 
@@ -160,6 +164,7 @@ source("scripts/data-prep.R")
 
 ## Data processing
 Data processing involves investigating the data looking for:
+
 1) missing data
 2) inconsistent data
 3) typos and other errors in character data
@@ -717,14 +722,99 @@ df_master |>
   )
 ```
 
+```{r absentee rate changes by district 2016-2023}
+#| fig-width: 15
+#| fig-height: 25
+districts_shp <- read_sf("shapes/School_Districts.geojson")
+districts_shp |> 
+  inner_join(df_master, by="district_code") |> 
+  ggplot() +
+  geom_sf(aes(fill=chronically_absent_rate)) +
+  facet_wrap(~school_year, ncol = 2) +
+  scale_fill_gradient(low="#f1e2ca", high="#b25d5a") +
+  labs(
+    fill="Chronically absent rate",
+    title = "Chronic absentee rate by district, 2016-2023",
+    subtitle = "Grey indicates missing data"
+  ) +
+  theme(
+    plot.title.position = "plot",
+    legend.position = "bottom",
+    legend.key.height = unit(1, 'cm'), #change legend key height
+    legend.key.width = unit(1, 'cm'), #change legend key width
+    legend.title = element_text(size = 16),
+    legend.text = element_text(size = 14),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    strip.text.x = element_text(size = 16),
+    plot.title = element_text(size = 20),
+    plot.subtitle = element_text(size = 16)
+  )
+```
+
+```{r percent change of absent rate 2017-2023}
+#| fig-width: 15
+#| fig-height: 20
+districts_shp |> 
+  inner_join(df_master, by="district_code") |> 
+  filter(school_year != "2016-2017") |> 
+  ggplot() +
+  geom_sf(aes(fill=pct_diff)) +
+  facet_wrap(~school_year, ncol = 2) +
+  scale_fill_gradient2(low="#557ca2", high="#b25e5a", mid="white", midpoint = 0) +
+  labs(
+    fill="% change",
+    title = "Percent change in chronic absentee rate by district, 2017-2023",
+    subtitle = "Grey indicates missing data"
+  ) +
+  theme(
+    plot.title.position = "plot",
+    legend.position = "bottom",
+    legend.key.height = unit(1, 'cm'), #change legend key height
+    legend.key.width = unit(1, 'cm'), #change legend key width
+    legend.title = element_text(size = 16),
+    legend.text = element_text(size = 14),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    strip.text.x = element_text(size = 16),
+    plot.title = element_text(size = 20),
+    plot.subtitle = element_text(size = 16)
+  )
+```
 
 
-```{r visualise enrollment pct change}
+
+
+```{r tabulate total enrollment data}
 total_enrollment_year <- df_master |> 
   group_by(school_year) |> 
   summarise(
     total_enrollment = sum(total_students, na.rm = TRUE)
   )
+
+total_enrollment_year |> 
+  pivot_wider(names_from = "school_year", values_from = "total_enrollment") |> 
+  gt(id="co-total-enrollment") |> 
+  tab_header(
+    title = "Colorado total enrollment 2016-2023"
+  ) |> 
+  fmt_number(drop_trailing_zeros = TRUE) |> 
+  opt_css(
+    css = "
+    #co-total-enrollment .gt_table {
+      width: 100%;
+    }
+    "
+  )
+```
+
+
+
+
+
+
+```{r visualise enrollment pct change}
+
 
 total_enrollment_year |> 
   mutate(
