@@ -35,3 +35,18 @@ compute_district_total <- function(data) {
     ) |> 
     pull()
 }
+
+################################################################################
+### Formats a table width reasonable default values.                         ###
+################################################################################
+format_table <- function(table, table_title="", table_sub_title="") {
+  table_id <- table$`_options` |> filter(parameter == "table_id") |> select(value) |> pull()
+  table |> tab_header(
+    title = table_title,
+    subtitle = table_sub_title
+  ) |> 
+  fmt_number(drop_trailing_zeros = TRUE, decimals = 1) |> 
+  opt_css(
+    css = paste("#", table_id, " .gt_table {width: 100%;}", sep="")
+  )
+}

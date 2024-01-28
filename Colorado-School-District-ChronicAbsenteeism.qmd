@@ -456,24 +456,21 @@ absent. Values should range from 0 to 1 inclusive.
 ```{r head chronically_absent_rate}
 df_master |> 
   select(chronically_absent_rate) |> 
-  head()
+  head() |> 
+  pull()
 ```
 This field has way too many significant figures. Most of these are meaningless 
 and later years in the dataset have fewer significant figures, so the additional
 significant figures will be removed by rounding.
 
-```{r tail chronically_absent_rate}
-df_master |> 
-  select(chronically_absent_rate) |> 
-  tail()
-```
 ```{r round chronically_absent_rate to 3 sig figs}
 df_master <- df_master |> 
   mutate(
     chronically_absent_rate = round(chronically_absent_rate, 3)
   )
 ```
- 
+
+Plot histograms to look for unusual or invalid values. 
 
 ```{r confirm chronic absentism rate data}
 #| warning: false
@@ -550,6 +547,65 @@ available. It will not affect the outcome of this study, but a follow-up to
 determine the true values for the 2016-2017 and 2017-2018 school years would be
 useful.
 
+To look for more school districts that might have large discrepancies in enrollment, year on year percent change in total enrollment can be computed and outliers investigated. After the field is created, a 5-number summary will give rough information about how the values are distributed.
+
+```{r computing enrollment diffs}
+df_master_tmp <- df_master |> 
+  group_by(district_code) |> 
+  arrange(school_year) |> 
+  mutate(
+    pct_enroll_diff = 100*(total_students - lag(total_students))/lag(total_students)
+  ) |> 
+  ungroup()
+
+df_master_tmp |>
+  filter(school_year != "2016-2017") |> 
+  group_by(school_year) |> 
+  summarise(
+    min_diff = min(pct_enroll_diff, na.rm = TRUE),
+    quartile_1 = quantile(pct_enroll_diff, 0.25, na.rm = TRUE),
+    median = median(pct_enroll_diff, na.rm = TRUE),
+    quartile_3 = quantile(pct_enroll_diff, 0.75, na.rm = TRUE),
+    max_diff = max(pct_enroll_diff, na.rm = TRUE),
+  ) |> 
+  gt(id="colorado-pct-diff-enrollment-tukey5") |> 
+  format_table("% change in enrollment 5-number summary by school year")
+
+```
+
+This table shows that there are some very significant changes in district enrollments.
+
+```{r}
+df_master |>
+  filter(school_year != "2016-2017" & abs(pct_enroll_diff) > 50) |>
+  select(school_year, district_code, district_name, absentee_students, total_students, pct_enroll_diff) |> 
+  arrange(desc(abs(pct_enroll_diff))) |> 
+  gt(id="colorado-pct-diff-enrollment") |> 
+  format_table("Percent change of enrollment outliers 2016-2023",
+               "Outliers are defined as having a change in enrollment greater than 50%")
+```
+
+Without knowing the history if these districts it is hard to say if the numbers contain errors. Like Agate 300, mentioned earlier, there are some very large changes year on year in micro to intermediate sized districts. Some of this may be explained by small districts be subject to more size volatility than larger ones, but some of these districts are having order of magnitude size changes in total enrollment which seems likely to be a data entry error than a real fluctuation in student enrollment. 
+
+#### Districts with at least 1 suspicious `total_students` record
+
+* 0960 - Agate 300
+* 0230 - Walsh RE-1
+* 1410 - North Park R-1
+* 0100 - Alamosa Re-11j
+* 0580 - South Conejos Re-10 (?)
+
+The first two years for Agate show enrollments of 5 & 4 students, then enrollment jumps to 37. It is likely that the 5 and 4 should be 35 and 34, but without checking, it is hard to say what the correct values are.
+
+For Walsh RE-1, there is a clear typo in the 2019-2020 information. The listed value is 45 but this should probably be 145 based on the other years.
+
+The same situation exists for North Park R-1 and in the same year. The listed value is 16, but it should probably be 160 or similar based on data from the other school years.
+
+Alamosa RE-11j has a similar issue in the 2020-2021 school year where, most likely, a leading "2" was dropped from the total enrollment number. It should probably be 2463 rather than the 463 that is listed.
+
+There is a less clear case for the South Conejos Re-10 school district in 2021-2022. The total enrollment drops from 160 to 78 before rebounding to 155. It is possible that there is a leading "1" that is missing, but so many districts show a drop in this year, that it is possible that the data are accurate.  
+
+
 ```{r total students enrolled analysis}
 #| message: false
 df_master |>
@@ -597,7 +653,7 @@ df_master |>
 ```
 
 ## Feature creation
-Two new features will be made from the current data: `district_size` and `pct_diff`. 
+Three new features will be made from the current data: `district_size`, `pct_diff`, and `pct_enrollment_diff`. 
 The first feature is a ordered categorical variable that describes the size of 
 the district. There are five levels. From smallest to largest they are
 
@@ -701,8 +757,11 @@ write_csv(df_2022, file="output/2022-2023_chronic_absenteeism.csv")
 ```
 
 ## Analysis
+The purpose of this analysis is to understand how chronic absenteeism is changing in Colorado both spatially and temporally. 
 
+**Flesh this intro out a bit more, it needs something more.**
 
+To begin, we create a line chart showing how the average chronic absenteeism changes for each `district_size` from 2016 - 2023. These are weighted averages that take into account the varying sizes of the individual school districts.
 
 ```{r absenteeism trends}
 #| message: false
@@ -721,6 +780,10 @@ df_master |>
     title="Absenteeism is increasing over time"
   )
 ```
+From this plot, we can see that, over all rates chronic absenteeism have increased for all district sizes from 2016 to 2023. There is a peak in the 2021-2022 school year, but it is too early to tell if the upward trend will continue or if 2021-2022 represents the high water mark. In addition to the overall trend, it is clear that larger districts tend to have higher rates of chronic absenteeism than smaller districts. The volatility of rate the smallest districts can be in the three school years from 2019-2022.
+
+These maps show the change rates of chronic absenteeism spatially over time. The overall trend is that chronic absenteeism is increasingly a problem statewide, but local changes vary widely. The lowest rates of chronic absenteeism tend to be in the eastern part of the state, which is an ares dominated by smaller districts. The highest rates tend to be in the southern and southwestern Colorado. The main urban centres also show high rates of chronic absenteeism. 
+
 
 ```{r absentee rate changes by district 2016-2023}
 #| fig-width: 15
@@ -751,6 +814,9 @@ districts_shp |>
     plot.subtitle = element_text(size = 16)
   )
 ```
+The changing rates of absenteeism show a trend of generally increasing rates peaking in the 2021-2022 school year
+
+
 
 ```{r percent change of absent rate 2017-2023}
 #| fig-width: 15
@@ -782,6 +848,45 @@ districts_shp |>
   )
 ```
 
+### Is district enrollment flux correlated with chronic absenteeism?
+
+```{r}
+#| fig-width: 15
+#| fig-height: 20
+
+df_master_tmp <- df_master |> 
+  mutate(
+    pct_enroll_diff = if_else(abs(pct_enroll_diff) > 20, NA, pct_enroll_diff)
+  )
+  
+districts_shp |> 
+  inner_join(df_master_tmp, by="district_code") |>
+  filter(school_year != "2016-2017") |> 
+  ggplot() +
+  geom_sf(aes(fill=pct_enroll_diff)) +
+  facet_wrap(~school_year, ncol = 2) +
+  scale_fill_gradient2(low="#557ca2", high="#b25e5a", 
+                       mid="white", midpoint = 0
+  ) +
+  labs(
+    fill="% change",
+    title = "Percent change in student enrollment by district, 2017-2023",
+    subtitle = "Grey indicates absolute changes > 20%"
+  ) +
+  theme(
+    plot.title.position = "plot",
+    legend.position = "bottom",
+    legend.key.height = unit(1, 'cm'), #change legend key height
+    legend.key.width = unit(1, 'cm'), #change legend key width
+    legend.title = element_text(size = 16),
+    legend.text = element_text(size = 14),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    strip.text.x = element_text(size = 16),
+    plot.title = element_text(size = 20),
+    plot.subtitle = element_text(size = 16)
+  )
+```
 
 
 
@@ -809,13 +914,9 @@ total_enrollment_year |>
 ```
 
 
-
-
-
+As the following plot shows, Colorado student enrollments are volatile in the 2019-2022 school years. The number of students enrolled fluctuates during the time that chronic absentee rates are peaking.
 
 ```{r visualise enrollment pct change}
-
-
 total_enrollment_year |> 
   mutate(
     pct_change = 100*(total_enrollment - lag(total_enrollment))/lag(total_enrollment),
