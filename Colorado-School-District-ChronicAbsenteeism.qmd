@@ -3,6 +3,7 @@ title: "Chronic Absenteeism in Colorado School Districts"
 subtitle: "School years 2016-2017 to 2022-2023"
 author: "Tripp Bishop"
 format: html
+toc: true
 ---
 
 ```{r setup}
