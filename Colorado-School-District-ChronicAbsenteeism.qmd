@@ -739,9 +739,7 @@ write_csv(df_2022, file="output/2022-2023_chronic_absenteeism.csv")
 ```
 
 ## Analysis
-The purpose of this analysis is to understand how chronic absenteeism is changing in Colorado both spatially and temporally. 
-
-
+Now that the data have been cleaned, transformed, and new features have been created, the analysis of the data can be performed. The purpose of this analysis is to understand how chronic absenteeism is changing in Colorado both spatially and temporally and what key insights can be taken from the analysis.
 
 ### Absentee trends for Colorado school districts
 To begin, we create a line chart showing how the average chronic absenteeism changes for each `district_size` from 2016 - 2023. These are weighted averages that take into account the varying sizes of the individual school districts.
@@ -759,8 +757,8 @@ df_master |>
   scale_colour_manual(values = district_size_palette)+
   labs(
     x=element_blank(),
-    y="Percent Absentee",
-    title="Absenteeism is increasing over time",
+    y="Percent absentee",
+    title="Chronic absenteeism is increasing over time",
     colour="District size"
   )
 ```
@@ -834,7 +832,6 @@ districts_shp |>
 ```
 
 ### Student enrollment
-
 Student enrollment was stable from the 2016-2017 to 2018-2019 school year. From 2019-2020 to 2022-2023 there was significant volatility in the total enrollment numbers for Colorado, with numbers return to pre-pandemic levels in the 2022-2023 school year.
 
 ```{r tabulate total enrollment data}
@@ -906,17 +903,9 @@ The seven school years from 2016 to 2023 are marked by a period of relative stab
 
 This analysis shows that:
 
-* Chronic absenteeism is increasing between 2016 and 2023 with a noticeable increase in the rate of absenteeism during the COVID-19 pandemic.
-* Rates of absenteeism appear to be declining, but it is too early to establish a trend.
-* The pandemic appears to have caused a migration of students into and then out of larger school districts. This flux of
-students may have contributed to increased rates of absenteeism during this time.
+* There are no pronounced region differences in rates of chronic absenteeism. The eastern plains do appear to have a somewhat lower rate than other regions, but it also has smaller school districts, in general, than other parts of the state.
 * Smaller districts generally have lower rates of absenteeism than larger ones.
 * About 7 in 10 Colorado students are enrolled in large school districts. Given that these districts also have higher rates of absenteeism, State efforts to address the problem should focus on these districts
-
-
-
-
-
-
-
-
+* Chronic absenteeism is increasing between 2016 and 2023 with a noticeable increase in the rate of absenteeism during the COVID-19 pandemic.
+* Rates of absenteeism appear to be declining, but it is too early to establish a trend.
+* The pandemic appears to have caused a migration of students into and then out of larger school districts. This flux of students may have contributed to increased rates of absenteeism during this time.
