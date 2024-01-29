@@ -511,9 +511,8 @@ df_master |>
 ```
 
 #### Total student enrollment
-The number of students enrolled in each district varies widely from less than 10
-to more than 85,000. The numbers are consistent and there are no invalid values
-in the dataset.
+Based on a 5-number summary of the number of students enrolled in each district varies widely from less than 10
+to more than 85,000. 
 
 ```{r total students 5 number summary}
 df_master |> 
@@ -524,21 +523,19 @@ df_master |>
     median = median(total_students, na.rm = TRUE),
     quartile_3 = quantile(total_students, 0.75, na.rm = TRUE),
     max_count = max(total_students, na.rm = TRUE),
-  )
+  ) |> 
+  gt(id="total-enrollment-tukey") |> 
+  format_table("5-number summary of undifferentiated enrollment data")
 ```
 
-The minimum counts for the first two years look suspect. The district is the 
-same in both cases, the Agate 300 school district.
+The numbers are consistent and there are no obviously invalid values in the dataset. The minimum counts for the first two years look suspect. The district is the same in both cases, the Agate 300 school district.
 
-```{r}
+```{r agate 300 enrollment numbers}
 df_master |> 
-  filter(total_students == 5 | total_students == 4) |> 
-  select(district_code, district_name, total_students, school_year)
-```
-
-```{r}
-df_master |> 
-  filter(district_code == "0960")
+  filter(district_code == "0960") |> 
+  select(school_year,absentee_students,total_students,chronically_absent_rate) |> 
+  gt(id="agate-300-enrollment") |> 
+  format_table("Agate 300 School District enrollment data 2016-2023")
 ```
 
 The `total_students` data for Agate 300 school district is quite variable, but
@@ -575,8 +572,8 @@ df_master_tmp |>
 
 This table shows that there are some very significant changes in district enrollments.
 
-```{r}
-df_master |>
+```{r percentage of enrollment outliers}
+df_master_tmp |>
   filter(school_year != "2016-2017" & abs(pct_enroll_diff) > 50) |>
   select(school_year, district_code, district_name, absentee_students, total_students, pct_enroll_diff) |> 
   arrange(desc(abs(pct_enroll_diff))) |> 
@@ -587,7 +584,7 @@ df_master |>
 
 Without knowing the history if these districts it is hard to say if the numbers contain errors. Like Agate 300, mentioned earlier, there are some very large changes year on year in micro to intermediate sized districts. Some of this may be explained by small districts be subject to more size volatility than larger ones, but some of these districts are having order of magnitude size changes in total enrollment which seems likely to be a data entry error than a real fluctuation in student enrollment. 
 
-#### Districts with at least 1 suspicious `total_students` record
+#### Examples of districts with at least 1 suspicious `total_students` record
 
 * 0960 - Agate 300
 * 0230 - Walsh RE-1
@@ -603,22 +600,7 @@ The same situation exists for North Park R-1 and in the same year. The listed va
 
 Alamosa RE-11j has a similar issue in the 2020-2021 school year where, most likely, a leading "2" was dropped from the total enrollment number. It should probably be 2463 rather than the 463 that is listed.
 
-There is a less clear case for the South Conejos Re-10 school district in 2021-2022. The total enrollment drops from 160 to 78 before rebounding to 155. It is possible that there is a leading "1" that is missing, but so many districts show a drop in this year, that it is possible that the data are accurate.  
-
-
-```{r total students enrolled analysis}
-#| message: false
-df_master |>
-  filter(!is.na(total_students)) |> 
-  ggplot(aes(x=total_students)) +
-  geom_histogram(colour="white", fill=standard_chart_colour) +
-  facet_wrap(~school_year) +
-  labs(
-    title = "Distribution of district student enrollment",
-    x="Student enrollment",
-    y="Count"
-  )
-```
+There is a less clear case for the South Conejos Re-10 school district in 2021-2022. The total enrollment drops from 160 to 78 before rebounding to 155. It is possible that there is a leading "1" that is missing, but so many districts show a drop in this year, that it is possible that the data are accurate.
 
 #### Chronically absent student counts
 The number of chronically absent students in each district varies widely from 0
@@ -759,8 +741,9 @@ write_csv(df_2022, file="output/2022-2023_chronic_absenteeism.csv")
 ## Analysis
 The purpose of this analysis is to understand how chronic absenteeism is changing in Colorado both spatially and temporally. 
 
-**Flesh this intro out a bit more, it needs something more.**
 
+
+### Absentee trends for Colorado school districts
 To begin, we create a line chart showing how the average chronic absenteeism changes for each `district_size` from 2016 - 2023. These are weighted averages that take into account the varying sizes of the individual school districts.
 
 ```{r absenteeism trends}
@@ -777,13 +760,14 @@ df_master |>
   labs(
     x=element_blank(),
     y="Percent Absentee",
-    title="Absenteeism is increasing over time"
+    title="Absenteeism is increasing over time",
+    colour="District size"
   )
 ```
 From this plot, we can see that, over all rates chronic absenteeism have increased for all district sizes from 2016 to 2023. There is a peak in the 2021-2022 school year, but it is too early to tell if the upward trend will continue or if 2021-2022 represents the high water mark. In addition to the overall trend, it is clear that larger districts tend to have higher rates of chronic absenteeism than smaller districts. The volatility of rate the smallest districts can be in the three school years from 2019-2022.
 
+### Spatial variations in chronic absenteeism
 These maps show the change rates of chronic absenteeism spatially over time. The overall trend is that chronic absenteeism is increasingly a problem statewide, but local changes vary widely. The lowest rates of chronic absenteeism tend to be in the eastern part of the state, which is an ares dominated by smaller districts. The highest rates tend to be in the southern and southwestern Colorado. The main urban centres also show high rates of chronic absenteeism. 
-
 
 ```{r absentee rate changes by district 2016-2023}
 #| fig-width: 15
@@ -814,9 +798,10 @@ districts_shp |>
     plot.subtitle = element_text(size = 16)
   )
 ```
-The changing rates of absenteeism show a trend of generally increasing rates peaking in the 2021-2022 school year
+The changing rates of absenteeism show a trend of generally increasing rates peaking in the 2021-2022 school year. There is not yet enough data to know if this represents a peak in rates of absenteeism or if they will continue to climb.
 
-
+### Spatial variations in the change of chronic absenteeism rates
+The rate of change of chronic absenteeism varies from region to region throughout the state. As expected, smaller districts show the most variability due to their smaller enrollment numbers. Early rates of change may be the result of improved record keeping on this metric rather than a real change in the rate of chronic absenteeism. This would be consistent with the relative stability of rates in 2017-2018 and 2018-2019. As expected, the rate of change increases statewide during the pandemic before appearing to improve in 2022-2023.
 
 ```{r percent change of absent rate 2017-2023}
 #| fig-width: 15
@@ -848,47 +833,9 @@ districts_shp |>
   )
 ```
 
-### Is district enrollment flux correlated with chronic absenteeism?
+### Student enrollment
 
-```{r}
-#| fig-width: 15
-#| fig-height: 20
-
-df_master_tmp <- df_master |> 
-  mutate(
-    pct_enroll_diff = if_else(abs(pct_enroll_diff) > 20, NA, pct_enroll_diff)
-  )
-  
-districts_shp |> 
-  inner_join(df_master_tmp, by="district_code") |>
-  filter(school_year != "2016-2017") |> 
-  ggplot() +
-  geom_sf(aes(fill=pct_enroll_diff)) +
-  facet_wrap(~school_year, ncol = 2) +
-  scale_fill_gradient2(low="#557ca2", high="#b25e5a", 
-                       mid="white", midpoint = 0
-  ) +
-  labs(
-    fill="% change",
-    title = "Percent change in student enrollment by district, 2017-2023",
-    subtitle = "Grey indicates absolute changes > 20%"
-  ) +
-  theme(
-    plot.title.position = "plot",
-    legend.position = "bottom",
-    legend.key.height = unit(1, 'cm'), #change legend key height
-    legend.key.width = unit(1, 'cm'), #change legend key width
-    legend.title = element_text(size = 16),
-    legend.text = element_text(size = 14),
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank(),
-    strip.text.x = element_text(size = 16),
-    plot.title = element_text(size = 20),
-    plot.subtitle = element_text(size = 16)
-  )
-```
-
-
+Student enrollment was stable from the 2016-2017 to 2018-2019 school year. From 2019-2020 to 2022-2023 there was significant volatility in the total enrollment numbers for Colorado, with numbers return to pre-pandemic levels in the 2022-2023 school year.
 
 ```{r tabulate total enrollment data}
 total_enrollment_year <- df_master |> 
@@ -899,22 +846,12 @@ total_enrollment_year <- df_master |>
 
 total_enrollment_year |> 
   pivot_wider(names_from = "school_year", values_from = "total_enrollment") |> 
-  gt(id="co-total-enrollment") |> 
-  tab_header(
-    title = "Colorado total enrollment 2016-2023"
-  ) |> 
-  fmt_number(drop_trailing_zeros = TRUE) |> 
-  opt_css(
-    css = "
-    #co-total-enrollment .gt_table {
-      width: 100%;
-    }
-    "
-  )
+  gt(id="co-total-enrollment") |>
+  format_table("Colorado total enrollment 2016-2023")
 ```
 
 
-As the following plot shows, Colorado student enrollments are volatile in the 2019-2022 school years. The number of students enrolled fluctuates during the time that chronic absentee rates are peaking.
+As the following plot shows, Colorado student enrollments are volatile in the 2019-2022 school years. The number of students enrolled fluctuates significantly during the time that chronic absentee rates are peaking.
 
 ```{r visualise enrollment pct change}
 total_enrollment_year |> 
@@ -925,7 +862,7 @@ total_enrollment_year |>
   filter(school_year != "2016-2017") |> 
   ggplot(aes(x=school_year, y=pct_change, fill=pos)) +
   geom_col(position = "identity") +
-  scale_fill_manual(values = c("#D6604D", "#92C5DE"), guide = FALSE) +
+  scale_fill_manual(values = c("#D6604D", "#92C5DE"), guide = "none") +
   labs(
     x="School year",
     y="% change",
@@ -934,7 +871,7 @@ total_enrollment_year |>
   )
 ```
 
-
+As this graph illustrates, there is a noticeable increase in enrollment in large districts in 2019-2020 followed by a nearly equally pronounced drop the following year. Enrollments are set early in the school year, so the increase in overall enrollment, and large districts' uptake of more students is independent of the COVID-19 pandemic. The drop in total enrollment and large districts' relative loss of students the following year may indicate a removal of students from the school system. There is another uptick in enrollment the following year, which aligns with the peak rate of chronic absenteeism observed from 2016 to 2023. It is unclear whether these phenomena are related or not.
 
 ```{r visual district size percentages}
 #| message: false
@@ -964,16 +901,16 @@ df_master |>
   
 ```
 
-
-
-
 ## Key findings
+The seven school years from 2016 to 2023 are marked by a period of relative stability to one of increasing volatility of student enrollment and increased rates of chronic absenteeism during and after the COVID-19 pandemic. There are signs of improvement, but it is too early to tell if improvements in chronic absentee rates will continue.
+
+This analysis shows that:
 
 * Chronic absenteeism is increasing between 2016 and 2023 with a noticeable increase in the rate of absenteeism during the COVID-19 pandemic.
 * Rates of absenteeism appear to be declining, but it is too early to establish a trend.
 * The pandemic appears to have caused a migration of students into and then out of larger school districts. This flux of
 students may have contributed to increased rates of absenteeism during this time.
-* Smaller districts generally have rate rates of absenteeism than larger ones.
+* Smaller districts generally have lower rates of absenteeism than larger ones.
 * About 7 in 10 Colorado students are enrolled in large school districts. Given that these districts also have higher rates of absenteeism, State efforts to address the problem should focus on these districts
 
 
