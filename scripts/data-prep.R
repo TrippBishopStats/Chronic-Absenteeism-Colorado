@@ -228,3 +228,14 @@ df_2022 <- df_2022 |>
 
 # All of the dataset are now ready. They all contain an record for each school
 # district.
+
+# write out all intermediate yearly files to RDS format to use in subsequent documents.
+
+write_rds(df_2016, "intermediates/df_2016.rds")
+write_rds(df_2017, "intermediates/df_2017.rds")
+write_rds(df_2018, "intermediates/df_2018.rds")
+write_rds(df_2019, "intermediates/df_2019.rds")
+write_rds(df_2020, "intermediates/df_2020.rds")
+write_rds(df_2021, "intermediates/df_2021.rds")
+write_rds(df_2022, "intermediates/df_2022.rds")
+
