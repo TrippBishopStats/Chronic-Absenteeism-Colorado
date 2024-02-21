@@ -1,0 +1,9 @@
+/* css styles */
+.button-container {
+  border-top: 1px solid #808080 ;
+  margin-top: 15px;
+  padding-top: 15px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}

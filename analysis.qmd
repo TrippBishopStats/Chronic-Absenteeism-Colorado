@@ -6,6 +6,8 @@ format: html
 ```{r setup}
 #| message: false
 #| echo: false
+#| code-fold: true
+#| code-summary: "Show the code"
 library(tidyverse)
 library(sf)
 library(viridis)
@@ -30,6 +32,7 @@ To begin, we create a line chart showing how the average chronic absenteeism cha
 
 ```{r absenteeism trends}
 #| message: false
+#| code-summary: "Show the code"
 
 df_master |> 
   group_by(district_size, school_year) |> 
@@ -54,6 +57,7 @@ These maps show the change rates of chronic absenteeism spatially over time. The
 ```{r absentee rate changes by district 2016-2023}
 #| fig-width: 15
 #| fig-height: 25
+#| code-summary: "Show the code"
 districts_shp <- read_sf("shapes/School_Districts.geojson")
 districts_shp |> 
   inner_join(df_master, by="district_code") |> 
@@ -88,6 +92,7 @@ The rate of change of chronic absenteeism varies from region to region throughou
 ```{r percent change of absent rate 2017-2023}
 #| fig-width: 15
 #| fig-height: 20
+#| code-summary: "Show the code"
 districts_shp |> 
   inner_join(df_master, by="district_code") |> 
   filter(school_year != "2016-2017") |> 
@@ -119,6 +124,7 @@ districts_shp |>
 Student enrollment was stable from the 2016-2017 to 2018-2019 school year. From 2019-2020 to 2022-2023 there was significant volatility in the total enrollment numbers for Colorado, with numbers return to pre-pandemic levels in the 2022-2023 school year.
 
 ```{r tabulate total enrollment data}
+#| code-summary: "Show the code"
 total_enrollment_year <- df_master |> 
   group_by(school_year) |> 
   summarise(
@@ -135,6 +141,7 @@ total_enrollment_year |>
 As the following plot shows, Colorado student enrollments are volatile in the 2019-2022 school years. The number of students enrolled fluctuates significantly during the time that chronic absentee rates are peaking.
 
 ```{r visualise enrollment pct change}
+#| code-summary: "Show the code"
 total_enrollment_year |> 
   mutate(
     pct_change = 100*(total_enrollment - lag(total_enrollment))/lag(total_enrollment),
@@ -156,6 +163,7 @@ As this graph illustrates, there is a noticeable increase in enrollment in large
 
 ```{r visual district size percentages}
 #| message: false
+#| code-summary: "Show the code"
 df_master |> 
   group_by(district_size, school_year) |> 
   summarise(
@@ -182,3 +190,6 @@ df_master |>
   
 ```
 
+<section class="button-container">
+  <a href="conclusions.html" role="button" class="btn btn-primary">Continue to Key Findings</a>
+</section>

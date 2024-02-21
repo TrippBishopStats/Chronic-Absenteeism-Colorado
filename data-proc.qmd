@@ -606,3 +606,7 @@ write_csv(df_2020, file="output/2020-2021_chronic_absenteeism.csv")
 write_csv(df_2021, file="output/2021-2022_chronic_absenteeism.csv")
 write_csv(df_2022, file="output/2022-2023_chronic_absenteeism.csv")
 ```
+
+<section class="button-container">
+  <a href="analysis.html" role="button" class="btn btn-primary">Continue to Analysis</a>
+</section>
