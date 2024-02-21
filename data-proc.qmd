@@ -1,0 +1,608 @@
+---
+title: "Data Processing"
+format: html
+---
+
+```{r setup}
+#| message: false
+#| echo: false
+library(tidyverse)
+library(janitor)
+library(naniar)
+library(gt)
+rm(list=ls())
+standard_chart_colour <- "#001970"
+theme_set(theme_minimal())
+source("scripts/functions.R")
+```
+
+
+```{r}
+#| echo: false
+#| message: false
+
+df_2016 <- read_rds("intermediates/df_2016.rds")
+df_2017 <- read_rds("intermediates/df_2017.rds")
+df_2018 <- read_rds("intermediates/df_2018.rds")
+df_2019 <- read_rds("intermediates/df_2019.rds")
+df_2020 <- read_rds("intermediates/df_2020.rds")
+df_2021 <- read_rds("intermediates/df_2021.rds")
+df_2022 <- read_rds("intermediates/df_2022.rds")
+
+```
+
+Data processing involves investigating the data looking for:
+
+1) missing data
+2) inconsistent data
+3) typos and other errors in character data
+4) errors in numeric data
+
+Once found, errors need to be corrected or otherwise acknowledged so that later analysis is not impacted.
+
+### Understanding missingness
+It is important to understand what data is missing from each dataset. The R package `naniar` is used to identify records which have a least one field that is missing data.
+
+#### 2016-2017 school year
+The only record with data missing in the 2016-2017 dataset is information for the `Karval RE-23` school district. Fields with missing data are `absentee_students`, `total_students`, and `chronically_absent_rate`. This is the result of this district having been missing in the original data and being added to the dataset during data preparation. Rather than attempt to impute the missing data, it will be left missing.
+
+```{r check for missingness 2016}
+naniar::miss_case_summary(df_2016) |> 
+  filter(n_miss > 0) |> 
+  inner_join(df_2016 |> 
+  rowid_to_column("case"), by=c("case"))
+```
+
+#### 2017-2018 school year
+There is no data missing from the 2017-2018 dataset.
+
+```{r check for missingness 2017}
+naniar::miss_case_summary(df_2017) |> 
+  filter(n_miss > 0) |> 
+  inner_join(df_2017 |> 
+  rowid_to_column("case"), by=c("case"))
+```
+
+#### 2018-2019 school year
+The only record with data missing in the 2018-2019 dataset is information for the `Cheraw 31` school district. Fields with missing data are `absentee_students`, `total_students`, and `chronically_absent_rate`. This is the result of this district having been missing in the original data and being added to the dataset during data preparation. Rather than attempt to impute the missing data, it will be left missing.
+
+```{r check for missingness 2018}
+naniar::miss_case_summary(df_2018) |> 
+  filter(n_miss > 0) |> 
+  inner_join(df_2018 |> 
+  rowid_to_column("case"), by=c("case"))
+```
+
+#### 2019-2020 school year
+There is no data missing from the 2019-2020 dataset.
+
+```{r check for missingness 2019}
+naniar::miss_case_summary(df_2019) |> 
+  filter(n_miss > 0) |> 
+  inner_join(df_2019 |> 
+  rowid_to_column("case"), by=c("case"))
+```
+
+#### 2020-2021 school year
+The only record with data missing in the 2020-2021 dataset is information for the `Holly RE-3` school district. Fields with missing data are `absentee_students`, `total_students`, and `chronically_absent_rate`. This is the result of this district having been missing in the original data and being added to the dataset during data preparation. Rather than attempt to impute the missing data, it will be left missing.
+
+```{r check for missingness 2020}
+naniar::miss_case_summary(df_2020) |> 
+  filter(n_miss > 0) |> 
+  inner_join(df_2020 |> 
+  rowid_to_column("case"), by=c("case"))
+```
+
+#### 2021-2022 school year
+There is no data missing from the 2021-2022 dataset.
+
+```{r check for missingness 2021}
+naniar::miss_case_summary(df_2021) |> 
+  filter(n_miss > 0) |> 
+  inner_join(df_2021 |> 
+  rowid_to_column("case"), by=c("case"))
+```
+
+#### 2022-2023 school year
+There is no data missing from the 2022-2023 dataset.
+
+```{r check for missingness 2022}
+naniar::miss_case_summary(df_2022) |> 
+  filter(n_miss > 0) |> 
+  inner_join(df_2022 |> 
+  rowid_to_column("case"), by=c("case"))
+```
+
+### Merging the datasets
+To facilitate further analysis, the individual school year datasets will be merged into a single master dataset.
+
+```{r}
+df_master <- bind_rows(df_2016,
+                       df_2017,
+                       df_2018,
+                       df_2019,
+                       df_2020,
+                       df_2021,
+                       df_2022)
+```
+
+### Examination of unvariates
+
+There are 3 numeric fields that need to be reviewed: `chronically_absent_rate`,
+`absentee_students`, and `total_students`. All of these fields should have 
+positive values. The first, `chronically_absent_rate` should range between 0 and
+1. In addition to these numeric fields, the school_districts need to be examined
+to ensure that all datasets include the same 178 school districts. Additionally,
+each dataset should contain 178 observations for the same school year.
+
+#### Verify counties
+
+```{r list distinct county names}
+df_master |> 
+  distinct(county_name)
+```
+There are 63 counties present. This is good. There are 64 counties in the state, 
+but Broomfield county is missing because it does not have any school districts 
+of its own. It is served by existing districts.
+
+The names are in call caps, for aesthetics, these will be converted to proper
+case.
+
+```{r verify distinct counties}
+df_master <- df_master |> 
+  mutate(
+    county_name = str_to_title(county_name)
+  )
+
+df_master |> 
+  distinct(county_name)
+```
+
+Now we need to verify the county codes.
+
+```{r list distinct county codes} 
+df_master |> 
+  distinct(county_code) |> 
+  pull()
+```
+There are 63 county codes. The data are consistent.
+
+#### Verify school districts
+
+Each dataset has 178 school district records. They should all be unique and 
+identical between school years.
+
+```{r distinct district count}
+district_count <- df_master |>
+  distinct(district_code) |> 
+  count() |> 
+  pull()
+
+district_count
+```
+This confirms that there are only `r district_count` districts in the dataset.
+
+```{r display distinct district name count}
+district_name_count <- df_master |>
+  distinct(district_name) |> 
+  count() |> 
+  pull()
+
+district_name_count
+```
+We have an issue with the `district_name` field, however. There are `r district_name_count` distinct
+values rather `r district_count`. We need to investigate the field to see if it
+is possible to normalise the `district_name` field.
+
+```{r list distinct district names}
+df_master |>
+  distinct(district_name)
+```
+After pouring through the data, it looks like the districts have both an all
+caps version and a proper case version. 
+
+```{r verify distinct school districts}
+
+distinct_districts <- df_master |> 
+  mutate(
+    district_name = str_to_title(district_name)
+  ) |> 
+  distinct(district_name) |> 
+  count() |> 
+  pull()
+distinct_districts
+```
+This gets us a lot closer. There are now only `r distinct_districts` distinct
+`district_name` values, but we still have `r distinct_districts - district_count`
+to normalise.
+
+Since we know that there are only `r district_count` distinct `district_code` 
+values, we can group by the `district_code` and find all instances where the
+`count()` is greater than 1. There should be `r distinct_districts - district_count`
+such instances.
+
+```{r locate inconsistent district names}
+df_master |> 
+  mutate(
+    district_name = str_to_title(district_name)
+  ) |> 
+  distinct(district_name, district_code) |>
+  group_by(district_code) |> 
+  count() |> 
+  filter(n > 1)
+```
+These are the `r distinct_districts - district_count` districts. We can retrieve
+them to see what we need to do to normalise them. Before we do, we will make
+permanent the proper casing of the district names.
+
+```{r}
+df_master <- df_master |> 
+  mutate(
+    district_name = str_to_title(district_name)
+  )
+
+dupe_district_ids <- df_master |> 
+  mutate(
+    district_name = str_to_title(district_name)
+  ) |> 
+  distinct(district_name, district_code) |>
+  group_by(district_code) |> 
+  count() |> 
+  filter(n > 1) |> 
+  select(district_code) |> 
+  pull()
+
+df_master |> 
+  filter(district_code %in% dupe_district_ids) |> 
+  select(district_code, district_name) |> 
+  distinct() |> 
+  arrange(district_code)
+```
+Most of these issues are minor differences that are easily fixed. The only 
+significant differences are with district codes `0920`, `1110`, `2730`, and 
+`3100`. These records will need to be modified individually as there are no
+patterns to the discrepancies. When the issue is that there are different names
+in use, the one being used more recently will be adopted.
+
+```{r normalise district names}
+
+df_master <- df_master |> 
+  mutate(
+    district_name = case_when(district_name %in% c("Mc Clave Re-2","Mcclave Re-2") ~ "McClave Re-2",
+                              str_starts(district_name, "St Vrain Valley Re") ~ "St Vrain Valley Re-1j",
+                              # district 0920 is called "Elizabeth School District" most recently
+                              district_name == "Elizabeth C-1" ~ "Elizabeth School District",
+                              # district 1110 is called "District 49" most recently
+                              district_name == "Falcon 49" ~ "District 49",
+                              str_starts(district_name, "Moffat County") ~ "Moffat County Re-1",
+                              district_name == "Meeker Re1" ~ "Meeker Re-1",
+                              # district 2730 is called "Upper Rio Grande School District C-7" most recently
+                              district_name == "Del Norte C-7" ~ "Upper Rio Grande School District C-7",
+                              district_name == "Windsor Re-4" ~ "Weld Re-4",
+                              # district 3140 is called "Weld Re-8 Schools" most recently
+                              district_name == "Weld County S/D Re-8" ~ "Weld Re-8 Schools",
+                              TRUE ~ district_name)
+  )
+```
+
+This confirms that the `district_name` field has been normalised. Now there are
+only `r district_count` distinct values.
+
+```{r confirm district name normalisation}
+df_master |>
+  distinct(district_name) |> 
+  count()
+```
+
+#### Verify school year information
+Each dataset should have a single value in the `school_year` field. If this is
+not the case, determine what the discrepancy is and make the correction.
+
+```{r Verify distinct school years}
+df_master |> 
+  group_by(school_year) |> 
+  count()
+```
+
+The datasets all contain a single value for the `school_year`.
+
+Now that this data is confirmed, the `school_year` field should be converted to
+an ordinal factor from a character field.
+
+```{r convert school year to factor}
+df_master <- df_master |> 
+  mutate(
+    school_year = fct_relevel(school_year, "2016-2017", "2017-2018", "2018-2019",
+                              "2019-2020","2020-2021","2021-2022","2022-2023")
+  )
+```
+
+#### Chronic absenteeism rate
+This field represents the proportion of K-12 students who are chronically
+absent. Values should range from 0 to 1 inclusive.
+
+```{r head chronically_absent_rate}
+df_master |> 
+  select(chronically_absent_rate) |> 
+  head() |> 
+  pull()
+```
+This field has way too many significant figures. Most of these are meaningless 
+and later years in the dataset have fewer significant figures, so the additional
+significant figures will be removed by rounding.
+
+```{r round chronically_absent_rate to 3 sig figs}
+df_master <- df_master |> 
+  mutate(
+    chronically_absent_rate = round(chronically_absent_rate, 3)
+  )
+```
+
+Plot histograms to look for unusual or invalid values. 
+
+```{r confirm chronic absentism rate data}
+#| warning: false
+df_master |> 
+  ggplot(aes(x=chronically_absent_rate)) +
+  geom_histogram(binwidth = 0.05, colour="white", fill=standard_chart_colour) +
+  facet_wrap(~school_year) +
+  labs(
+    title = "Distribution of district chronic absenteeism",
+    subtitle = "School years 2016-2023",
+    x="Chronically absent rate",
+    y="Count"
+  )
+```
+The data look valid. There is a high occurrence of zero values in the 2016-2017 
+school year. This suggests that either different school districts may have begun
+record keeping at different times or that these smaller districts were actually
+not seeing this phenomenon until later. Of these, the former seems more plausible.
+Chronic absenteeism could be cross-referenced with truancy rates to provide a 
+check on this. The truancy data may allow us to rule out the second hypothesis.
+This could be done in a follow-up analysis.
+
+There are 20 districts that reported no chronically absent students in 2016-2017.
+The number steadily decreases and by 2021-2022 there are no districts reporting
+no students as chronically absent.
+```{r chronic absenteeism rate analysis}
+df_master |> 
+  filter(chronically_absent_rate == 0) |>
+  ggplot(aes(x=total_students)) + 
+  geom_histogram(bins=20, colour="white", fill=standard_chart_colour) +
+  facet_wrap(~school_year) +
+  labs(
+    title = "Smaller districts are less likely to report chronic absenteeism",
+    subtitle = "The number of schools not reporting declines significantly over time",
+    x="Total studends enrolled",
+    y="Count"
+  )
+```
+
+#### Total student enrollment
+Based on a 5-number summary of the number of students enrolled in each district varies widely from less than 10
+to more than 85,000. 
+
+```{r total students 5 number summary}
+df_master |> 
+  group_by(school_year) |> 
+  summarise(
+    min_count = min(total_students, na.rm = TRUE),
+    quartile_1 = quantile(total_students, 0.25, na.rm = TRUE),
+    median = median(total_students, na.rm = TRUE),
+    quartile_3 = quantile(total_students, 0.75, na.rm = TRUE),
+    max_count = max(total_students, na.rm = TRUE),
+  ) |> 
+  gt(id="total-enrollment-tukey") |> 
+  format_table("5-number summary of undifferentiated enrollment data")
+```
+
+The numbers are consistent and there are no obviously invalid values in the dataset. The minimum counts for the first two years look suspect. The district is the same in both cases, the Agate 300 school district.
+
+```{r agate 300 enrollment numbers}
+df_master |> 
+  filter(district_code == "0960") |> 
+  select(school_year,absentee_students,total_students,chronically_absent_rate) |> 
+  gt(id="agate-300-enrollment") |> 
+  format_table("Agate 300 School District enrollment data 2016-2023")
+```
+
+The `total_students` data for Agate 300 school district is quite variable, but
+5 and 4 seem like extremely low counts given the other 5 years of data 
+available. It will not affect the outcome of this study, but a follow-up to
+determine the true values for the 2016-2017 and 2017-2018 school years would be
+useful.
+
+To look for more school districts that might have large discrepancies in enrollment, year on year percent change in total enrollment can be computed and outliers investigated. After the field is created, a 5-number summary will give rough information about how the values are distributed.
+
+```{r computing enrollment diffs}
+df_master_tmp <- df_master |> 
+  group_by(district_code) |> 
+  arrange(school_year) |> 
+  mutate(
+    pct_enroll_diff = 100*(total_students - lag(total_students))/lag(total_students)
+  ) |> 
+  ungroup()
+
+df_master_tmp |>
+  filter(school_year != "2016-2017") |> 
+  group_by(school_year) |> 
+  summarise(
+    min_diff = min(pct_enroll_diff, na.rm = TRUE),
+    quartile_1 = quantile(pct_enroll_diff, 0.25, na.rm = TRUE),
+    median = median(pct_enroll_diff, na.rm = TRUE),
+    quartile_3 = quantile(pct_enroll_diff, 0.75, na.rm = TRUE),
+    max_diff = max(pct_enroll_diff, na.rm = TRUE),
+  ) |> 
+  gt(id="colorado-pct-diff-enrollment-tukey5") |> 
+  format_table("% change in enrollment 5-number summary by school year")
+
+```
+
+This table shows that there are some very significant changes in district enrollments.
+
+```{r percentage of enrollment outliers}
+df_master_tmp |>
+  filter(school_year != "2016-2017" & abs(pct_enroll_diff) > 50) |>
+  select(school_year, district_code, district_name, absentee_students, total_students, pct_enroll_diff) |> 
+  arrange(desc(abs(pct_enroll_diff))) |> 
+  gt(id="colorado-pct-diff-enrollment") |> 
+  format_table("Percent change of enrollment outliers 2016-2023",
+               "Outliers are defined as having a change in enrollment greater than 50%")
+```
+
+Without knowing the history if these districts it is hard to say if the numbers contain errors. Like Agate 300, mentioned earlier, there are some very large changes year on year in micro to intermediate sized districts. Some of this may be explained by small districts be subject to more size volatility than larger ones, but some of these districts are having order of magnitude size changes in total enrollment which seems likely to be a data entry error than a real fluctuation in student enrollment. 
+
+#### Examples of districts with at least 1 suspicious `total_students` record
+
+* 0960 - Agate 300
+* 0230 - Walsh RE-1
+* 1410 - North Park R-1
+* 0100 - Alamosa Re-11j
+* 0580 - South Conejos Re-10 (?)
+
+The first two years for Agate show enrollments of 5 & 4 students, then enrollment jumps to 37. It is likely that the 5 and 4 should be 35 and 34, but without checking, it is hard to say what the correct values are.
+
+For Walsh RE-1, there is a clear typo in the 2019-2020 information. The listed value is 45 but this should probably be 145 based on the other years.
+
+The same situation exists for North Park R-1 and in the same year. The listed value is 16, but it should probably be 160 or similar based on data from the other school years.
+
+Alamosa RE-11j has a similar issue in the 2020-2021 school year where, most likely, a leading "2" was dropped from the total enrollment number. It should probably be 2463 rather than the 463 that is listed.
+
+There is a less clear case for the South Conejos Re-10 school district in 2021-2022. The total enrollment drops from 160 to 78 before rebounding to 155. It is possible that there is a leading "1" that is missing, but so many districts show a drop in this year, that it is possible that the data are accurate.
+
+#### Chronically absent student counts
+The number of chronically absent students in each district varies widely from 0
+to more than 40,000. The numbers are consistent and there are no invalid values
+in the dataset.
+
+```{r absent students 5 number summary}
+df_master |> 
+  group_by(school_year) |> 
+  summarise(
+    min_count = min(absentee_students, na.rm = TRUE),
+    quartile_1 = quantile(absentee_students, 0.25, na.rm = TRUE),
+    median = median(absentee_students, na.rm = TRUE),
+    quartile_3 = quantile(absentee_students, 0.75, na.rm = TRUE),
+    max_count = max(absentee_students, na.rm = TRUE),
+  )
+```
+
+
+```{r absentee students count analysis}
+#| message: false
+df_master |>
+  filter(!is.na(absentee_students)) |> 
+  ggplot(aes(x=absentee_students)) +
+  geom_histogram(colour="white", fill=standard_chart_colour) +
+  facet_wrap(~school_year) +
+  labs(
+      title = "Distribution of district chronic absenteeism",
+      x="Absentee students",
+      y="Count"
+    )
+```
+
+## Feature creation
+Three new features will be made from the current data: `district_size`, `pct_diff`, and `pct_enrollment_diff`. 
+The first feature is a ordered categorical variable that describes the size of 
+the district. There are five levels. From smallest to largest they are
+
+* Micro - Up to 100 students
+* Small - 101 to 750 students
+* Intermediate - 751 to 3000 students
+* Medium - 3001 to 15000 students
+* Large - More than 15000 students
+
+The second feature is the change in chronic absenteeism rate from year to year.
+The values for all districts in the 2016-2017 school year are `NA` as this is
+the first year in the dataset.
+
+```{r}
+df_master <- df_master |> 
+  mutate(
+    district_size = case_when(
+      total_students > 15000 ~ "Large",
+      total_students > 3000 ~ "Medium",
+      total_students > 750 ~ "Intermediate",
+      total_students > 100 ~ "Small",
+      TRUE ~ "Micro"
+    )
+  ) |> 
+  mutate(
+    district_size = fct_relevel(district_size, "Micro", "Small", "Intermediate", "Medium", "Large")
+  ) |> 
+  group_by(district_code) |> 
+  arrange(school_year) |> 
+  mutate(
+    pct_diff = chronically_absent_rate - lag(chronically_absent_rate, n=1, order_by = district_code)
+  ) |>
+  ungroup(district_code) |> 
+  relocate(district_size, .before=chronically_absent_rate)
+```
+
+The number of districts in each group is consistent from year to year. The smaller
+school districts, those in the `Small` and `Micro` categories, have the most
+variability. This is not surprising as small changes in student population can 
+move a district from one category to another.
+
+```{r}
+df_master |> 
+  ggplot(aes(x=district_size)) +
+  geom_bar(fill=standard_chart_colour) +
+  facet_wrap(~school_year) +
+  coord_flip() +
+  labs(
+    x="District size",
+    y="Count"
+  )
+```
+The `pct_diff` data looks to be consistent with what we know about the rest of
+the data in this dataset. The 5 number summary shows how volatile the
+absenteeism rates can be, particularly around the first COVID-19 school year
+2019-2020.
+
+```{r percent difference 5 number summary}
+df_master |>
+  filter(school_year != "2016-2017") |> 
+  group_by(school_year) |> 
+  summarise(
+    min_count = min(pct_diff, na.rm = TRUE),
+    quartile_1 = quantile(pct_diff, 0.25, na.rm = TRUE),
+    median = median(pct_diff, na.rm = TRUE),
+    quartile_3 = quantile(pct_diff, 0.75, na.rm = TRUE),
+    max_count = max(pct_diff, na.rm = TRUE),
+  )
+```
+
+The histograms show that the `pct_diff` data is normally distributed but with
+significant outliers in the 2019-2020 and 2020-2021 school years.
+
+```{r}
+#| message: false
+df_master |> 
+  filter(!is.na(pct_diff)) |> 
+  ggplot(aes(x=pct_diff)) +
+  geom_histogram(binwidth=0.1, colour="white", fill=standard_chart_colour) +
+  facet_wrap(~school_year)
+```
+
+### Create master data file
+Now that the data preparation and processing have been completed, the complete
+dataset can be saved to disk.
+
+```{r write master dataframe to disk}
+write_csv(df_master, file = "output/2016-2023-master_chronic_absenteeism.csv")
+write_rds(df_master, file = "intermediates/df_master.rds")
+```
+
+Write CSV files to output folder for each year's dataset so that they can be
+reused without having to reapply the processing steps.
+```{r write individual year dataframes to disk}
+write_csv(df_2016, file="output/2016-2017_chronic_absenteeism.csv")
+write_csv(df_2017, file="output/2017-2018_chronic_absenteeism.csv")
+write_csv(df_2018, file="output/2018-2019_chronic_absenteeism.csv")
+write_csv(df_2019, file="output/2019-2020_chronic_absenteeism.csv")
+write_csv(df_2020, file="output/2020-2021_chronic_absenteeism.csv")
+write_csv(df_2021, file="output/2021-2022_chronic_absenteeism.csv")
+write_csv(df_2022, file="output/2022-2023_chronic_absenteeism.csv")
+```

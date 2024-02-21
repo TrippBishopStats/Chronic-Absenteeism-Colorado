@@ -1,0 +1,26 @@
+project:
+  type: website
+
+website:
+  title: "Chronic Absenteeism in Colorado School Districts"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Overview
+      - href: data-prep.qmd
+        text: Prepare
+      - href: data-proc.qmd
+        text: Process
+      - href: analysis.qmd
+        text: Analysis
+      - href: conclusions.qmd
+        text: Key Findings
+
+format:
+  html:
+    theme: sandstone
+    css: styles.css
+    toc: true
+
+editor: visual
+

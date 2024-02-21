@@ -1,0 +1,412 @@
+---
+title: "Data Preparation"
+format: html
+---
+
+The file structure is not consistent across the individual year datasets. There are different numbers of fields,
+different names for the same fields, differing numbers of empty rows at the end of the datasets, and different file name conventions for the different datasets. The goal of the data preparation is to normalise all datasets so that they:
+
+1) Have the same naming convention for all input files
+2) Have the same structure
+3) Have the same naming convention for all fields
+4) Have field names that are easy to work with in code
+5) Fields are in the same column order within datasets
+6) Contain no extraneous records or fields
+7) Ensure that all datasets contain the same number of districts
+
+For more details on the data preparation process, consult the preparation script, `data-prep.R`, found in the `/scripts` directory of the [Chronic Absenteeism Colorado](https://github.com/TrippBishopStats/Chronic-Absenteeism-Colorado) repository.
+
+### Standarising file names, fields, and naming conventions
+The data for this analysis came in the form of Excel spreadsheets with varying
+name formats. The individual school year file names were standardised with the
+following format: `startyear-endyear_ChronicAbsenteeism.xslx`. For example, data
+for the 2016-2017 school year is contained in the file 
+`2016-2017_ChronicAbsenteeism.xlsx`.
+
+In addition to discrepancies in file names, there were inconsistencies in the
+field names between years.
+
+### Dataset structure standardisation
+While the individual datasets contain most of the same data, the structure of the data varies from year to year. The following structure has been imposed on all school year datasets so that they can be merging into a single, master dataset.
+
+| Field name  | Data type  |
+|---|---|
+| school_year  |  ordinal factor |
+| county_code  |  character |
+| county_name  |  character |
+| district_code  |  character |
+| district_name  |  character |
+| absentee_students  |  numeric |
+| total_students  |  numeric  |
+| **district_size**  |  ordinal_factor |
+| chronically_absent_rate  |  numeric |
+| **pct_diff**  | numeric  |
+
+Field names in **bold** are derived fields that are not in the original data. Details can be found in the [Feature creation](#feature-creation) section below.
+
+The truancy data was removed from the dataset since chronic absenteeism is the
+focus of this analysis. All fields were converted to "clean" names that facilitate
+working with them programmatically. This entails replacing spaces with underscores, 
+converting all characters to lower case, and ensuring that fields do not start 
+with a numeral.
+
+The changes required for each year's data are detailed in the following sections.
+
+#### 2016-2017
+* Fields were renamed to match standard names.
+* Truancy field was dropped.
+* The `school_year` field was missing.
+
+#### 2017-2018/2018-2019
+* Fields were renamed to match standard names.
+* Truancy fields were dropped.
+
+#### 2019-2020/2020-2021/2021-2022
+* Fields were renamed to match standard names.
+* Truancy fields were dropped.
+* `2021_2022_student_count` field was renamed to `total_students`.
+
+#### 2022-2023
+* Fields were renamed to match standard names.
+* Truancy fields were dropped.
+* `k_12_student_count_used_in_chronic_absent_rate` field was renamed to `total_students`.
+* `chronic_absent_count` field was renamed to `absentee_count`.
+* Fields were reordered to conform to dataset structure standard.
+
+### The shape file
+The shape file contains all of the geometries needed to successfully create the
+school districts in mapping software. The problem is that the school district
+names in the file do not always match the names in the absentee datasets. There
+are no other fields in the existing data to associate the district geometries
+with the absentee data. Such a relationship is essential for using the data to 
+create dashboards in Tableau.
+
+To solve this problem, the `district_code` field has manually added to the
+shape file to provide a simple way of creating the relationship between the
+district geometries and the absentee data. In most cases, associating the correct
+district code was not difficult, but the following 3 school districts required
+some additional research as the district names were considerably different in
+the shape file and absentee dataset.
+
+#### School districts to repair
+The following table contains the district name discrepancies.
+
+| Absentee dataset district name  | Shapefile district name |
+|---|---|
+| FREMONT RE-2  | Florence RE-2 School District  |
+| CUSTER COUNTY SCHOOL DISTRICT C-1  | Consolidated C-1 School District (Westcliffe)  |
+| Revere School District  | Platte Valley RE-7 School District  |
+
+## Preparation
+
+```{r setup}
+#| message: false
+# run all the preprocessing code.
+library(tidyverse)
+library(janitor)
+library(readxl)
+source("scripts/functions.R")
+```
+
+### Reading the data files
+The first N rows of the spreadsheet are not useful. The actual headers start
+on line N+1 and the data follows from there.
+
+```{r read datasets from excel}
+df_2016 <- read_xlsx("data/2016-2017_ChronicAbsenteeism.xlsx", skip = 8)
+df_2017 <- read_xlsx("data/2017-2018_ChronicAbsenteeism.xlsx", skip = 8)
+df_2018 <- read_xlsx("data/2018-2019_ChronicAbsenteeism.xlsx", skip = 4)
+df_2019 <- read_xlsx("data/2019-2020_ChronicAbsenteeism.xlsx", skip = 4)
+df_2020 <- read_xlsx("data/2020-2021_ChronicAbsenteeism.xlsx", skip = 4)
+df_2021 <- read_xlsx("data/2021-2022_ChronicAbsenteeism.xlsx", skip = 4)
+df_2022 <- read_xlsx("data/2022-2023_ChronicAbsenteeism.xlsx", skip = 4)
+```
+
+Let's take a quick look at the field names for each file.
+
+2016 is different to all other datasets. It has the fewest number of fields.
+```{r names 2016}
+names(df_2016)
+```
+
+
+2017 & 2018 have the same fields
+```{r names 2017/2018}
+names(df_2017)
+names(df_2018)
+```
+
+2019 - 2021 have the same fields except the student count field which includes
+the school year. It sounds like Pre-K students are not factored in to
+absenteeism rates. In the previous 3 datasets the grades included in the
+accounting are mentioned in the field name, but in these 3 data sets that is
+not the case. Furthermore, these datasets are missing the `Truancy Rate` field
+that is present in the previous three datasets.
+
+```{r names 2019/2020/2021}
+names(df_2019)
+names(df_2020)
+names(df_2021)
+```
+
+
+Finally, 2022
+
+```{r names 2022}
+names(df_2022)
+```
+### Normalising the dataframes
+The analysis is going to be about chronic absenteeism, so the truancy fields
+can be dropped. Since there is a lot of variability in the fields across
+datasets, it will be easier to just remove these fields since they won't be
+included in any analysis.
+
+```{r normalising dataset strucutre 2016/2017}
+rename_cols <- c("absentee_students"="number_of_students_with_chronic_absenteeism", 
+                 "total_students"="student_fall_k_12_enrollment",
+                 "chronically_absent_rate" = "percent_chronically_absent")
+
+df_2016 <- df_2016 |> 
+  clean_names() |> 
+  select(-truancy_rate) |> 
+  rename(all_of(rename_cols)) |> 
+  mutate(school_year = "2016-2017") |> 
+  select(school_year, everything())
+
+df_2017 <- df_2017 |> 
+  clean_names() |> 
+  select(-truancy_rate, -starts_with("students")) |>
+  rename(all_of(rename_cols))
+
+names(2016) == names(2017)
+```
+
+2016 & 2017 are normalised now.
+
+```{r normalising dataset strucutre 2018}
+df_2018 <- df_2018 |> 
+  clean_names() |> 
+  select(-truancy_rate, -starts_with("students")) |>
+  rename(all_of(rename_cols[1:2]))
+
+names(2017) == names(2018)
+```
+
+2018 is normalised now.
+
+```{r normalising dataset strucutre 2019}
+df_2019 <- df_2019 |> 
+  clean_names() |> 
+  select(-starts_with("students")) |>
+  rename(all_of(rename_cols[1])) |> 
+  rename("total_students"="x2019_2020_student_count")
+
+names(2018) == names(2019)
+```
+
+2019 is normalised now.
+
+```{r normalising dataset strucutre 2020}
+df_2020 <- df_2020 |> 
+  clean_names() |> 
+  select(-starts_with("students")) |>
+  rename(all_of(rename_cols[1])) |> 
+  rename("total_students"="x2020_2021_student_count")
+
+names(2019) == names(2020)
+```
+
+2020 is normalised now.
+
+```{r normalising dataset strucutre 2021}
+df_2021 <- df_2021 |> 
+  clean_names() |> 
+  select(-starts_with("students")) |>
+  rename(all_of(rename_cols[1])) |> 
+  rename("total_students"="x2021_2022_student_count")
+
+names(2020) == names(2021)
+```
+
+2021 is normalised now.
+
+This last dataset is a bit different to those that precede it. Main challenge
+is that the total student count and absentee student counts need to be swapped
+so that this dataset is consistent with the others after the standard
+structural transformations have been applied.
+
+```{r}
+df_2022 <- df_2022 |> 
+  clean_names() |> 
+  select(-pk_12_student_count) |>
+  rename(all_of(c("total_students"="k_12_student_count_used_in_chronic_absent_rate",
+                  "absentee_students" = "chronic_absent_count"))) |> 
+  relocate(absentee_students, .before=total_students)
+```
+
+### Removing unnecessary data and dealing with missing school districts
+
+Now that we have normalised the dataframes, we need to eliminate unnecessary
+rows and remove any duplicates.
+
+A quick visual inspection of the 2016 data shows that there are 177 school
+districts in the file. There are an additional 7 records in the table that are
+non-geographical school districts. These will be eliminated from this
+analysis. In addition, there is a "State Totals" row in the file that will
+also be removed.
+
+```{r 2016 invalid county codes}
+invalid_county_codes <- c("90","98","STATE TOTALS")
+
+df_2016 <- df_2016 |> 
+  filter(!county_code %in% invalid_county_codes)
+```
+
+There are now 177 school districts in the dataframe.
+
+Now we will look at the 2017-2018 school year data. This file has the same
+invalid districts but it also has some extra rows that do not contain data.
+They are just artifacts of the Excel spreadsheets that are the original source
+of the data.
+
+```{r 2017 invalid county codes}
+df_2017 <- df_2017 |> 
+  filter(!county_code %in% invalid_county_codes & !is.na(county_code))
+```
+
+There are now 178 records in the dataset. It seems like there is a school
+district missing from the 2016 data. We can do an anti-join to locate the
+school district.
+
+```{r missing districts}
+df_2017 |> 
+  anti_join(df_2016, by="district_code")
+```
+
+This shows that the Karval district is missing from the 2016 data. We will add
+the record to 2016 and put NA for the student data fields.
+
+```{r 2016 add Karval}
+df_2016 <- extract_missing_district(df_2017, df_2016)
+```
+
+The missing school district has now been added to the dataframe.
+
+Now, examine the 2018 school year dataset.
+
+```{r}
+df_2018 |> 
+  filter(!county_code %in% invalid_county_codes & !is.na(county_code)) |> 
+  count()
+```
+
+Like 2016, there are now only 177 school districts, we can use the same
+technique to identify which district is missing.
+
+```{r}
+df_2018_tmp <- df_2018 |> 
+  filter(!county_code %in% invalid_county_codes & !is.na(county_code))
+
+df_2017 |> 
+  anti_join(df_2018_tmp, by="district_code")
+```
+
+The CHERAW 31 district is missing. Let's add it to the 2018 dataset.
+
+```{r}
+df_2018 <- extract_missing_district(df_2017, df_2018_tmp)
+rm(df_2018_tmp)
+```
+
+Now there are 178 districts in the dataset.
+
+Moving on to 2019. There are new challenges here. The totals row is now in a
+different format and the previous filtering methods won't work, so we'll use a
+custom approach for this school year.
+
+```{r}
+df_2019 |> 
+  filter(!county_code %in% invalid_county_codes & county_code != "COLORADO TOTAL") |> 
+  count()
+```
+
+There are 178 school districts, so no more processing is required.
+
+```{r}
+df_2019 <- df_2019 |> 
+  filter(!county_code %in% invalid_county_codes & county_code != "COLORADO TOTAL")
+```
+
+Now let's look at 2020. The pattern here is similar to 2019, but the totals
+column is now labeled "State Total", so we need to modify approach slightly.
+
+```{r}
+df_2020 |> 
+  filter(!county_code %in% invalid_county_codes & county_code != "State Total") |> 
+  count()
+
+df_2020_tmp <- df_2020 |> 
+  filter(!county_code %in% invalid_county_codes & county_code != "State Total")
+```
+
+Again, we are missing a school district. Which one is it?
+
+```{r}
+df_2017 |> 
+  anti_join(df_2020_tmp, by="district_code")
+```
+
+This time, it's the Holly RE-3 school district that is missing.
+
+```{r}
+df_2020 <- extract_missing_district(df_2017, df_2020_tmp)
+rm(df_2020_tmp)
+```
+
+Moving on to the 2021 school year dataset. This one is different yet again,
+but patterns that we have used before can be applied to clean this up.
+
+```{r}
+df_2021 |> 
+  filter(!county_code %in% invalid_county_codes & 
+          county_code != "State Total*" & 
+          !is.na(county_code)) |> 
+  count()
+
+df_2021 <- df_2021 |> 
+  filter(!county_code %in% invalid_county_codes & 
+           county_code != "State Total*" & 
+           !is.na(county_code))
+```
+
+This results in 178 school districts, so we can move on.
+
+The last dataset, the 2022-2023 school year. It looks similar in layout to 2020.
+
+```{r}
+df_2022 |> 
+  filter(!county_code %in% invalid_county_codes & county_code != "State Total") |> 
+  count()
+
+df_2022 <- df_2022 |> 
+  filter(!county_code %in% invalid_county_codes & county_code != "State Total")
+```
+
+There are now 178 records, so this dataset is ready.
+
+All of the datasets are now ready. They all contain a record for each school
+district.
+
+```{r write out intermediates}
+#| echo: false
+
+# write out all intermediate yearly files to RDS format to use in subsequent documents.
+write_rds(df_2016, "intermediates/df_2016.rds")
+write_rds(df_2017, "intermediates/df_2017.rds")
+write_rds(df_2018, "intermediates/df_2018.rds")
+write_rds(df_2019, "intermediates/df_2019.rds")
+write_rds(df_2020, "intermediates/df_2020.rds")
+write_rds(df_2021, "intermediates/df_2021.rds")
+write_rds(df_2022, "intermediates/df_2022.rds")
+```
+

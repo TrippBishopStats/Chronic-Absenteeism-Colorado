@@ -1,0 +1,15 @@
+---
+title: "Key Findings"
+format: html
+---
+
+The seven school years from 2016 to 2023 are marked by a period of relative stability to one of increasing volatility of student enrollment and increased rates of chronic absenteeism during and after the COVID-19 pandemic. There are signs of improvement, but it is too early to tell if improvements in chronic absentee rates will continue.
+
+This analysis shows that:
+
+* There are no pronounced region differences in rates of chronic absenteeism. The eastern plains do appear to have a somewhat lower rate than other regions, but it also has smaller school districts, in general, than other parts of the state.
+* Smaller districts generally have lower rates of absenteeism than larger ones.
+* About 7 in 10 Colorado students are enrolled in large school districts. Given that these districts also have higher rates of absenteeism, State efforts to address the problem should focus on these districts
+* Chronic absenteeism is increasing between 2016 and 2023 with a noticeable increase in the rate of absenteeism during the COVID-19 pandemic.
+* Rates of absenteeism appear to be declining, but it is too early to establish a trend.
+* The pandemic appears to have caused a migration of students into and then out of larger school districts. This flux of students may have contributed to increased rates of absenteeism during this time.

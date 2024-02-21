@@ -1,0 +1,49 @@
+---
+title: "Chronic Absenteeism in Colorado School Districts"
+format: html
+editor: visual
+---
+
+## Overview
+Rates of chronic absenteeism have been increasing in Colorado over the past several years. This analysis aims to identify broad trends, both spatially and temporally, in this phenomenon and to provide resources to those that are investigating and verifying methods to mitigate it.
+
+### Objectives
+The objectives of this analysis are to:
+
+* Understand how rates of chronic absenteeism change temporally and spatially from 2016 to 2023.
+* Compare chronic absenteeism rates in different regions of Colorado
+* Understand if COVID-19 appears to have had a significant effect on chronic absentee rates.
+* Understand if school district size is correlated with chronic absentee rates.
+
+Data from the Colorado Department of Education will be used to understand chronic absenteeism and its rate and location of occurrence.
+
+### Definitions
+The Colorado Department of Education provides the following definition of chronic absenteeism: 
+
+::: {.callout-warning}
+## Chronically Absent
+A student absent 10 percent or more of the days enrolled during the school year is chronically absent. All absences are included - unexcused and excused. The rate is the percentage of students enrolled who are chronically absent.
+:::
+
+### Resources
+The following resources were produced for this analysis and are made publicly available:
+
+* [Chronic Absenteeism in Colorado 2016-2023 Dashboard](https://public.tableau.com/app/profile/tripp.bishop/viz/ColoradoSchoolDistrictChronicAbsenteeism/Dashboard1) - A Tableau interactive dashboard that lets the user see both spatial and temporal changes to chronic absenteeism throughout the state.
+
+* [Chronic Absenteeism Colorado](https://github.com/TrippBishopStats/Chronic-Absenteeism-Colorado) - The github repository that contains all source materials and the code, written in the R programming language, used to produce this analysis.
+
+## Data Sources
+The data sources used in this analysis come from the Colorado Department of Education. The department maintains a website containing information about [attendance](https://www.cde.state.co.us/cdereval/truancystatistics) including information about chronic absenteeism.
+
+The raw data for years 2016-2017 to 2021-2022 can be found at the [Attendance - Previous School Years](https://www.cde.state.co.us/cdereval/attendancedatapreviousyears) page or at the github repository listed in the [Resources](#resources) section above.
+
+In addition to the absenteenism data, geometry files for creating maps are required for this analysis. The Colorado school district shape file was obtained from the [Colorado Geospatial Portal](https://geodata.colorado.gov/datasets/COOIT::school-districts/about) and modified to meet the needs of this analysis. From more information on how the file was modified, see the [shape file](#the-shape-file) section below.
+
+::: {.callout-note}
+## Notes on the methodology of data collection from the Department of Education
+* Distinct counts were taken for each level of data, i.e. distinct counts for the state, district and school level. Since distinct counts were taken, there is not necessarily a 1-1 ratio of summing up schools to equal a district count, or summing up district counts to equate state level.
+* Total Days Attended + Total Days Excused + Total Days Unexcused = Total Days Possible for each student record. There is a 0.5 tolerance for this calculation.
+* Chronic Absenteeism Rate adjusted from school year 2022-2023, forward, to not include PK students in denominator.
+* Total Number of Chronic Absenteeism students and Total Number of Habitually Truant (for each category) adjusted from school year 2022-2023, forward, to not include duplicate counts, i.e. not count one student twice or more for meeting multiple criteria. 
+* School level data was collected up until the 2018-2019 school year with student level data collection beginning in 2019-2020.
+:::
