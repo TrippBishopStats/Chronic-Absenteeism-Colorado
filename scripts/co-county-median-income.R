@@ -1,4 +1,5 @@
 library(rvest)
+library(tidyverse)
 
 # get the list of distinct county names
 counties <- df_master |> 
